@@ -50,6 +50,19 @@
               <button type="submit" data-action="{{ next_status }}">→ {{ next_status }}</button>
             </form>
           {% endfor %}
+          {% if r.status != 'expired' %}
+            {# Hide-from-tracker button. Sets status='expired' which keeps the
+               row in SQLite (preserves notes / reviewer history / resume
+               path) but drops it from the Tracker panel. Recoverable via
+               `tracker set <id> applied` if mis-clicked. #}
+            <form hx-post="/tracker/{{ r.job_id }}/status"
+                  hx-target="#queue" hx-swap="innerHTML"
+                  hx-include="this"
+                  hx-confirm="Hide this row from the tracker? (history is kept; sets status to 'expired'.)">
+              <input type="hidden" name="new_status" value="expired" />
+              <button type="submit" data-action="rejected" title="Hide from tracker (keeps history)">🗑</button>
+            </form>
+          {% endif %}
         </div>
       </td>
     </tr>

@@ -26,6 +26,15 @@ from ..tracker import db
 # Statuses that mean "I'm done with this row" — hidden from Action Queue
 DONE_STATUSES = {"applied", "interview", "offer", "rejected", "withdrawn", "expired"}
 
+# Statuses shown on the Tracker panel. Only post-application states; the
+# pre-application 'discovered'/'scored'/'tailored' states live in the
+# Action Queue where they have actionable buttons (Tailor, Review, Apply).
+# 'expired' is also hidden so the trash button truly removes from default
+# view — recover via the 'expired (hidden)' filter dropdown if needed.
+TRACKER_VISIBLE_STATUSES = {
+    "applied", "interview", "offer", "rejected", "withdrawn",
+}
+
 
 @dataclass
 class QueueRow:
@@ -186,8 +195,22 @@ def action_queue(grade_filter: str | None = None,
 
 def tracker_view(status_filter: str | None = None,
                  limit: int = 500) -> list[TrackerRow]:
-    """Everything in the tracker, most-recently-touched first."""
-    rows = db.list_apps(status=status_filter, limit=limit)
+    """Tracker panel: only post-application states (applied/interview/offer/
+    rejected/withdrawn/expired). Pre-application states (discovered/scored/
+    tailored) live in the Action Queue where they have actionable buttons.
+
+    status_filter (optional) further narrows to one specific state. If a
+    user filters to 'tailored' explicitly, we honour it for debugging.
+    """
+    if status_filter:
+        rows = db.list_apps(status=status_filter, limit=limit)
+    else:
+        # Pull a generous slice; we'll filter in-Python so the index covers
+        # the multiple visible statuses without N round-trips.
+        rows = [
+            r for r in db.list_apps(limit=limit * 4)
+            if r.get("status") in TRACKER_VISIBLE_STATUSES
+        ][:limit]
     out: list[TrackerRow] = []
     for r in rows:
         def _int_or_none(v: Any) -> int | None:

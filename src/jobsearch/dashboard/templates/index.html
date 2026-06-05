@@ -261,16 +261,17 @@
         <h2>Tracker</h2>
         <div class="filters">
           <select name="status" hx-get="/tracker" hx-target="#tracker" hx-trigger="change">
-            <option value="">All statuses</option>
-            <option value="tailored">tailored</option>
+            <option value="">All applications</option>
             <option value="applied">applied</option>
             <option value="interview">interview</option>
             <option value="offer">offer</option>
             <option value="rejected">rejected</option>
-            <option value="discovered">discovered</option>
-            <option value="expired">expired</option>
+            <option value="withdrawn">withdrawn</option>
+            <option value="expired">expired (hidden)</option>
+            <option value="tailored">tailored (debug)</option>
+            <option value="discovered">discovered (debug)</option>
           </select>
-          <span class="muted">most-recently-touched first</span>
+          <span class="muted">post-application states only · most-recent first</span>
         </div>
       </header>
       <div id="tracker" class="scroll">
