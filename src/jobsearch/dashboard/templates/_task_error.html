@@ -1,0 +1,18 @@
+{# Error banner — replaces the running banner once a task fails. User sees
+   the error, hits 'dismiss' to clear, optionally retries. No more polling. #}
+<div id="task-status"
+     class="task-banner task-banner-error"
+     hx-swap-oob="true">
+  <strong>{{ kind }} failed</strong> for <code>{{ job_id }}</code>: {{ error }}
+  <div class="task-actions">
+    <button type="button"
+            hx-post="/{{ kind }}/{{ job_id }}"
+            hx-target="#task-status"
+            hx-swap="outerHTML">retry</button>
+    <button type="button"
+            onclick="document.getElementById('task-status').innerHTML=''">dismiss</button>
+    {% if 'sso' in error|lower or 'token' in error|lower or 'expired' in error|lower or 'credential' in error|lower %}
+      <span class="muted">Hint: <code>aws sso login --profile fitai</code> then retry.</span>
+    {% endif %}
+  </div>
+</div>

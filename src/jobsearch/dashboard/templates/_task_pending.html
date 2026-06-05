@@ -1,0 +1,15 @@
+{# Pending banner. Sits in #task-status above the queue while a tailor or
+   review task is running. Self-replaces every 1.5s by polling /tasks/{id}.
+   Server returns this same template while running; when done, returns the
+   full _after_status_change partial which swaps #queue (and OOBs #tracker
+   + the task banner area). #}
+<div id="task-status"
+     class="task-banner"
+     hx-get="/tasks/{{ task_id }}"
+     hx-trigger="every 1500ms"
+     hx-target="#queue"
+     hx-swap="innerHTML"
+     hx-swap-oob="true">
+  <span class="spinner"></span>
+  <strong>{{ kind }}</strong> running for <code>{{ job_id }}</code>… <span class="muted">(30-60s)</span>
+</div>

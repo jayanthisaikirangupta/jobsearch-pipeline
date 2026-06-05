@@ -18,6 +18,67 @@ def _safe_filename(s: str, fallback: str = "co") -> str:
     return safe or fallback
 
 
+def tailor_one(row: "pd.Series", *, force: bool = False) -> Path | None:
+    """Tailor a single scored-parquet row. Returns the .docx path or None
+    on skip/failure. Used by both the slice-driver run() loop and the
+    dashboard's per-row Tailor button.
+
+    force=True bypasses the skip_existing check (re-tailor over the top).
+    """
+    settings = get_settings()
+    profile = get_profile()
+    job_id = str(row["id"])
+
+    if not force:
+        existing = tracker_get(job_id)
+        if existing and existing.get("status") == "tailored":
+            rp = Path(existing.get("resume_path") or "")
+            if rp.exists() and rp.stat().st_size > 0:
+                return rp  # idempotent skip
+
+    variant = picker.pick(str(row.get("title", "")), str(row.get("description", "")))
+    if variant is None:
+        raise RuntimeError("No resume variants in RESUMES_DIR; check .env")
+
+    tailored = claude_tailor.tailor(
+        resume_text=variant.text,
+        job_title=str(row.get("title", "")),
+        company=str(row.get("company", "")),
+        jd=str(row.get("description", "")),
+    )
+
+    safe_company = _safe_filename(str(row.get("company", "co")))
+    out_path = settings.output_dir / "resumes" / f"{job_id}_{safe_company}.docx"
+    writer.render(tailored, profile.candidate, out_path)
+    if not out_path.exists() or out_path.stat().st_size == 0:
+        raise RuntimeError(f"Render reported success but {out_path} missing/empty")
+
+    upsert_application(
+        job_id=job_id,
+        title=str(row.get("title", "")),
+        company=str(row.get("company", "")),
+        url=str(row.get("url", "")),
+        grade=str(row.get("grade", "")),
+        score=int(row.get("score_total", 0)),
+        resume_path=str(out_path),
+        status="tailored",
+    )
+    return out_path
+
+
+def run_for_id(job_id: str, *, force: bool = False) -> Path | None:
+    """Tailor a single job by id. Used by the dashboard's per-row button."""
+    settings = get_settings()
+    src = settings.data_dir / "jobs_scored.parquet"
+    if not src.exists():
+        raise FileNotFoundError(f"Run score first: {src} missing")
+    df = pd.read_parquet(src)
+    match = df[df["id"] == job_id]
+    if match.empty:
+        raise KeyError(f"job_id {job_id} not in jobs_scored.parquet")
+    return tailor_one(match.iloc[0], force=force)
+
+
 def run(top_n: int = 10, offset: int = 0, skip_existing: bool = True) -> list[Path]:
     """Tailor a slice of the scored jobs ranked by score_total descending.
 
@@ -49,62 +110,22 @@ def run(top_n: int = 10, offset: int = 0, skip_existing: bool = True) -> list[Pa
     out_paths: list[Path] = []
     for _, r in top.iterrows():
         job_id = str(r["id"])
-
-        # Idempotency: skip if a tailored file already exists on disk
-        if skip_existing:
-            existing = tracker_get(job_id)
-            if existing and existing.get("status") == "tailored":
-                rp = Path(existing.get("resume_path") or "")
-                if rp.exists() and rp.stat().st_size > 0:
-                    console.print(f"  [dim]skip[/] {r.get('company')} (already tailored: {rp.name})")
-                    out_paths.append(rp)
-                    continue
-
-        variant = picker.pick(str(r.get("title", "")), str(r.get("description", "")))
-        if variant is None:
-            console.print("[yellow]No resume variants found in RESUMES_DIR; skipping.[/]")
-            break
-
         try:
-            tailored = claude_tailor.tailor(
-                resume_text=variant.text,
-                job_title=str(r.get("title", "")),
-                company=str(r.get("company", "")),
-                jd=str(r.get("description", "")),
-            )
+            path = tailor_one(r, force=not skip_existing)
         except Exception as e:  # noqa: BLE001
             console.print(f"[red]Tailor failed for {job_id}: {e}[/]")
             continue
-
-        safe_company = _safe_filename(str(r.get("company", "co")))
-        out_path = settings.output_dir / "resumes" / f"{job_id}_{safe_company}.docx"
-
-        # Render with tracker integrity: only upsert "tailored" if the file
-        # actually landed on disk. Word file locks or OneDrive sync conflicts
-        # used to leave the tracker pointing at files that never got written.
-        try:
-            writer.render(tailored, profile.candidate, out_path)
-        except Exception as e:  # noqa: BLE001
-            console.print(f"[red]Render failed for {job_id} ({out_path.name}): {e}[/]")
+        if path is None:
             continue
-        if not out_path.exists() or out_path.stat().st_size == 0:
-            console.print(f"[red]Render reported success but {out_path} missing/empty — tracker NOT updated[/]")
-            continue
-
-        out_paths.append(out_path)
-        upsert_application(
-            job_id=job_id,
-            title=str(r.get("title", "")),
-            company=str(r.get("company", "")),
-            url=str(r.get("url", "")),
-            grade=str(r.get("grade", "")),
-            score=int(r.get("score_total", 0)),
-            resume_path=str(out_path),
-            status="tailored",
-        )
-        console.print(
-            f"  [green]tailored[/] {r.get('grade')} {r.get('company')} -> {out_path.name}"
-        )
+        # Was this an idempotent skip vs a fresh tailor?
+        existing = tracker_get(job_id)
+        if existing and existing.get("status") == "tailored" and skip_existing:
+            console.print(f"  [dim]skip[/] {r.get('company')} (already tailored: {path.name})")
+        else:
+            console.print(
+                f"  [green]tailored[/] {r.get('grade')} {r.get('company')} -> {path.name}"
+            )
+        out_paths.append(path)
 
     console.print(f"[green]Wrote {len(out_paths)} tailored resumes.[/]")
     return out_paths

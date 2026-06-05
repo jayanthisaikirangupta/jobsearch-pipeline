@@ -146,6 +146,72 @@
     .empty {
       text-align: center; padding: 40px; color: var(--gray);
     }
+
+    /* --- Task banner (Tailor / Review polling state) --- */
+    #task-status:empty { display: none; }
+    .task-banner {
+      grid-column: 1 / -1;
+      background: #fff7ed;
+      border: 1px solid #fed7aa;
+      color: #9a3412;
+      padding: 10px 14px;
+      border-radius: 8px;
+      margin: 0 16px 12px;
+      font-size: 13px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+    .task-banner-error {
+      background: #fef2f2;
+      border-color: #fecaca;
+      color: #7f1d1d;
+      flex-wrap: wrap;
+    }
+    .task-banner code {
+      background: white;
+      padding: 1px 5px;
+      border-radius: 3px;
+      font-size: 12px;
+    }
+    .task-actions {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+      margin-left: auto;
+    }
+    .task-actions button {
+      padding: 3px 10px;
+      font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+    }
+    .task-actions button:hover { background: #f3f4f6; }
+
+    /* --- Spinner (CSS-only, no SVG) --- */
+    .spinner {
+      width: 12px;
+      height: 12px;
+      border: 2px solid #d1d5db;
+      border-top-color: var(--blue);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+      display: inline-block;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* --- Tailor / Review buttons (per-row) --- */
+    .icon-btn-primary {
+      border-color: var(--blue);
+      color: var(--blue);
+    }
+    .icon-btn-primary:hover { background: #dbeafe; }
+    .icon-btn:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
     @media (max-width: 1100px) {
       main { grid-template-columns: 1fr; }
       section.panel { max-height: none; }
@@ -165,6 +231,8 @@
       <span><b>{{ stats.total_scored }}</b>scored</span>
     </div>
   </header>
+
+  <div id="task-status"></div>
 
   <main>
     <section class="panel">

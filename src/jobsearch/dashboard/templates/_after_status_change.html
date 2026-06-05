@@ -1,7 +1,10 @@
 {# Primary swap: queue panel (the form's hx-target) #}
 {% include "_action_queue.html" %}
 
-{# Out-of-band swap: tracker panel + stats counters #}
+{# Out-of-band swap: tracker panel #}
 <div id="tracker" hx-swap-oob="innerHTML">
   {% include "_tracker.html" %}
 </div>
+
+{# Out-of-band swap: clear the task banner if one was running. #}
+<div id="task-status" hx-swap-oob="innerHTML"></div>
