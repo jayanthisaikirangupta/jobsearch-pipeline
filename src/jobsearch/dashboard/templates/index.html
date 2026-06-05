@@ -1,0 +1,214 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <title>Jobsearch Dashboard</title>
+  <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <style>
+    :root {
+      --navy: #1F3A5F;
+      --blue: #2E75B6;
+      --gray: #595959;
+      --bg: #f7f7f8;
+      --card: #ffffff;
+      --border: #e5e7eb;
+      --green: #16a34a;
+      --amber: #d97706;
+      --red: #dc2626;
+    }
+    * { box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Cambria, system-ui, sans-serif;
+      margin: 0;
+      background: var(--bg);
+      color: #111;
+      font-size: 14px;
+    }
+    header {
+      background: var(--navy);
+      color: white;
+      padding: 12px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    header h1 { margin: 0; font-size: 16px; font-weight: 600; }
+    .stats { display: flex; gap: 24px; font-size: 12px; }
+    .stats span b { display: block; font-size: 16px; }
+    main {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr;
+      gap: 16px;
+      padding: 16px;
+      max-width: 1800px;
+      margin: 0 auto;
+    }
+    section.panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      max-height: calc(100vh - 80px);
+    }
+    section.panel > header {
+      background: white;
+      color: var(--navy);
+      border-bottom: 1px solid var(--border);
+      padding: 10px 16px;
+      flex-direction: column;
+      align-items: stretch;
+      gap: 8px;
+    }
+    section.panel > header h2 {
+      margin: 0; font-size: 14px;
+      color: var(--navy);
+      letter-spacing: 0.5px;
+      text-transform: uppercase;
+    }
+    .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .filters input, .filters select {
+      padding: 4px 8px; font-size: 12px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+    }
+    .scroll { overflow-y: auto; flex: 1; }
+    table { width: 100%; border-collapse: collapse; font-size: 13px; }
+    th {
+      background: #fafafa;
+      padding: 6px 8px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.3px;
+      text-transform: uppercase;
+      color: var(--gray);
+      border-bottom: 1px solid var(--border);
+      position: sticky; top: 0;
+    }
+    td {
+      padding: 8px;
+      border-bottom: 1px solid #f0f0f0;
+      vertical-align: top;
+    }
+    tr:hover td { background: #fafbfc; }
+    .grade-A { color: var(--green); font-weight: 700; }
+    .grade-B { color: var(--blue); font-weight: 700; }
+    .grade-C, .grade-D, .grade-F { color: var(--gray); font-weight: 600; }
+    .score { font-variant-numeric: tabular-nums; font-weight: 600; }
+    .muted { color: var(--gray); font-size: 11px; }
+    .company { font-weight: 600; color: var(--navy); }
+    .title  { color: #111; }
+    .small  { font-size: 11px; color: var(--gray); }
+    .badge {
+      display: inline-block;
+      padding: 2px 7px;
+      border-radius: 10px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.2px;
+      text-transform: lowercase;
+    }
+    .badge-discovered { background: #f3f4f6; color: var(--gray); }
+    .badge-scored     { background: #fde68a; color: #92400e; }
+    .badge-tailored   { background: #dbeafe; color: #1e40af; }
+    .badge-applied    { background: #bbf7d0; color: #14532d; }
+    .badge-interview  { background: #c7d2fe; color: #312e81; }
+    .badge-offer      { background: #fcd34d; color: #78350f; font-weight: 700; }
+    .badge-rejected   { background: #fecaca; color: #7f1d1d; }
+    .badge-withdrawn  { background: #e5e7eb; color: var(--gray); }
+    .badge-expired    { background: #f3f4f6; color: var(--gray); text-decoration: line-through; }
+    .badge-empty      { background: #f9fafb; color: #9ca3af; border: 1px dashed #d1d5db; }
+
+    .actions { display: flex; gap: 4px; flex-wrap: wrap; margin-top: 4px; }
+    .actions form { display: inline; }
+    .actions button, .icon-btn {
+      padding: 3px 8px;
+      font-size: 11px;
+      border: 1px solid var(--border);
+      border-radius: 4px;
+      background: white;
+      cursor: pointer;
+      color: #111;
+      text-decoration: none;
+    }
+    .actions button:hover, .icon-btn:hover { background: #f3f4f6; }
+    .actions button[data-action="applied"] {
+      border-color: var(--green); color: var(--green);
+    }
+    .actions button[data-action="rejected"] {
+      border-color: var(--red); color: var(--red);
+    }
+    .row-link { color: var(--blue); text-decoration: none; font-size: 11px; }
+    .row-link:hover { text-decoration: underline; }
+    .verdict { font-style: italic; color: var(--gray); font-size: 11px; max-width: 360px; }
+    .empty {
+      text-align: center; padding: 40px; color: var(--gray);
+    }
+    @media (max-width: 1100px) {
+      main { grid-template-columns: 1fr; }
+      section.panel { max-height: none; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Jobsearch Dashboard</h1>
+    <div class="stats">
+      <span><b>{{ stats.queue }}</b>queue</span>
+      <span><b>{{ stats.applied }}</b>applied</span>
+      <span><b>{{ stats.interview }}</b>interview</span>
+      <span><b>{{ stats.offer }}</b>offer</span>
+      <span><b>{{ stats.rejected }}</b>rejected</span>
+      <span><b>{{ stats.top_picks }}</b>top picks</span>
+      <span><b>{{ stats.total_scored }}</b>scored</span>
+    </div>
+  </header>
+
+  <main>
+    <section class="panel">
+      <header>
+        <h2>Action Queue</h2>
+        <div class="filters">
+          <select name="grade" hx-get="/action-queue" hx-target="#queue" hx-include="[name=grade],[name=location]" hx-trigger="change">
+            <option value="">All grades</option>
+            <option value="A">A only</option>
+            <option value="B">B only</option>
+          </select>
+          <input type="text" name="location" placeholder="Filter location (london, edinburgh...)"
+                 hx-get="/action-queue" hx-target="#queue"
+                 hx-include="[name=grade],[name=location]"
+                 hx-trigger="keyup changed delay:300ms" />
+          <span class="muted">reviewer-first ranking; reviewed rows on top</span>
+        </div>
+      </header>
+      <div id="queue" class="scroll">
+        {% include "_action_queue.html" %}
+      </div>
+    </section>
+
+    <section class="panel">
+      <header>
+        <h2>Tracker</h2>
+        <div class="filters">
+          <select name="status" hx-get="/tracker" hx-target="#tracker" hx-trigger="change">
+            <option value="">All statuses</option>
+            <option value="tailored">tailored</option>
+            <option value="applied">applied</option>
+            <option value="interview">interview</option>
+            <option value="offer">offer</option>
+            <option value="rejected">rejected</option>
+            <option value="discovered">discovered</option>
+            <option value="expired">expired</option>
+          </select>
+          <span class="muted">most-recently-touched first</span>
+        </div>
+      </header>
+      <div id="tracker" class="scroll">
+        {% include "_tracker.html" %}
+      </div>
+    </section>
+  </main>
+</body>
+</html>

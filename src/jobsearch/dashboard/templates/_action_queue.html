@@ -1,0 +1,72 @@
+{% if not rows %}
+  <div class="empty">
+    No rows in the queue. Run <code>tailor run</code> to populate, or change filters.
+  </div>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Rank</th>
+      <th>Grade</th>
+      <th>Score</th>
+      <th>Reviewer</th>
+      <th>Company</th>
+      <th>Title</th>
+      <th>Location</th>
+      <th>Verdict / actions</th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in rows %}
+    <tr id="queue-row-{{ r.job_id }}">
+      <td class="muted">#{{ loop.index }}</td>
+      <td><span class="grade-{{ r.grade or 'F' }}">{{ r.grade or '-' }}</span></td>
+      <td class="score">{{ r.score_total }}</td>
+      <td>
+        {% if r.reviewer_score is not none %}
+          <span class="grade-{{ r.reviewer_grade or 'F' }}">{{ r.reviewer_grade or '?' }}</span>
+          <span class="score">{{ r.reviewer_score }}</span>
+        {% else %}
+          <span class="muted">—</span>
+        {% endif %}
+      </td>
+      <td class="company">{{ r.company }}</td>
+      <td class="title">
+        {{ r.title }}
+        <div class="small">
+          {% if r.dup_count > 1 %}<span title="Posted to {{ r.dup_sources }}">×{{ r.dup_count }}</span> · {% endif %}
+          {% if r.tracker_status %}
+            <span class="badge badge-{{ r.tracker_status }}">{{ r.tracker_status }}</span>
+          {% else %}
+            <span class="badge badge-empty">new</span>
+          {% endif %}
+        </div>
+      </td>
+      <td class="small">{{ r.location }}</td>
+      <td>
+        {% if r.reviewer_verdict %}
+          <div class="verdict">{{ r.reviewer_verdict }}</div>
+        {% endif %}
+        <div class="actions">
+          {% if r.url %}
+            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener">↗ JD</a>
+          {% endif %}
+          {% if r.has_resume %}
+            <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄 CV</a>
+          {% endif %}
+          {% set status_key = r.tracker_status or '' %}
+          {% for next_status in STATUS_ACTIONS.get(status_key, ['applied','tailored','withdrawn']) %}
+            <form hx-post="/tracker/{{ r.job_id }}/status"
+                  hx-target="#queue" hx-swap="innerHTML"
+                  hx-include="this">
+              <input type="hidden" name="new_status" value="{{ next_status }}" />
+              <button type="submit" data-action="{{ next_status }}">{{ next_status }}</button>
+            </form>
+          {% endfor %}
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}

@@ -1,0 +1,59 @@
+{% if not tracker_rows %}
+  <div class="empty">
+    Tracker is empty. Run the pipeline to populate it.
+  </div>
+{% else %}
+<table>
+  <thead>
+    <tr>
+      <th>Status</th>
+      <th>Company / Title</th>
+      <th>Score</th>
+      <th>Reviewer</th>
+      <th>Updated</th>
+      <th></th>
+    </tr>
+  </thead>
+  <tbody>
+  {% for r in tracker_rows %}
+    <tr id="tracker-row-{{ r.job_id }}">
+      <td><span class="badge badge-{{ r.status }}">{{ r.status }}</span></td>
+      <td>
+        <div class="company">{{ r.company }}</div>
+        <div class="title small">{{ r.title }}</div>
+        {% if r.notes %}<div class="small muted">{{ r.notes }}</div>{% endif %}
+      </td>
+      <td>
+        <span class="grade-{{ r.grade or 'F' }}">{{ r.grade or '-' }}</span>
+        <span class="score">{{ r.score }}</span>
+      </td>
+      <td>
+        {% if r.reviewer_score is not none %}
+          <span class="grade-{{ r.reviewer_grade or 'F' }}">{{ r.reviewer_grade }}</span>
+          <span class="score">{{ r.reviewer_score }}</span>
+        {% else %}<span class="muted">—</span>{% endif %}
+      </td>
+      <td class="small muted">{{ r.updated_at[:16] }}</td>
+      <td>
+        <div class="actions">
+          {% if r.url %}
+            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener">↗</a>
+          {% endif %}
+          {% if r.resume_path %}
+            <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄</a>
+          {% endif %}
+          {% for next_status in STATUS_ACTIONS.get(r.status, []) %}
+            <form hx-post="/tracker/{{ r.job_id }}/status"
+                  hx-target="#queue" hx-swap="innerHTML"
+                  hx-include="this">
+              <input type="hidden" name="new_status" value="{{ next_status }}" />
+              <button type="submit" data-action="{{ next_status }}">→ {{ next_status }}</button>
+            </form>
+          {% endfor %}
+        </div>
+      </td>
+    </tr>
+  {% endfor %}
+  </tbody>
+</table>
+{% endif %}

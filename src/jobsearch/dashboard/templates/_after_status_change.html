@@ -1,0 +1,7 @@
+{# Primary swap: queue panel (the form's hx-target) #}
+{% include "_action_queue.html" %}
+
+{# Out-of-band swap: tracker panel + stats counters #}
+<div id="tracker" hx-swap-oob="innerHTML">
+  {% include "_tracker.html" %}
+</div>

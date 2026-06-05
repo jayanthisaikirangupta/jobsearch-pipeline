@@ -173,6 +173,31 @@ def tracker_set(job_id: str, status: str, notes: str, no_export: bool) -> None:
         console.print(f"[red]No such job_id {job_id}[/]")
 
 
+# ----- dashboard -------------------------------------------------------------
+@cli.command("dashboard")
+@click.option("--host", default="127.0.0.1", show_default=True)
+@click.option("--port", type=int, default=8000, show_default=True)
+@click.option("--reload", is_flag=True, help="Auto-reload on code change (dev).")
+def dashboard_cmd(host: str, port: int, reload: bool) -> None:
+    """Launch the local web dashboard at http://HOST:PORT.
+
+    Reads jobs_scored.parquet + tracker.sqlite live on every request — no
+    Excel re-export needed. One-click status updates persist to SQLite.
+    """
+    try:
+        import uvicorn
+    except ImportError as e:
+        raise click.ClickException(
+            "fastapi/uvicorn not installed. Run: pip install -e \".[dashboard]\""
+        ) from e
+    console.print(f"[cyan]Dashboard at http://{host}:{port}  (Ctrl-C to stop)[/]")
+    uvicorn.run(
+        "jobsearch.dashboard.app:app",
+        host=host, port=port, reload=reload,
+        log_level="warning",
+    )
+
+
 # ----- pipeline (one-shot) ---------------------------------------------------
 @cli.group()
 def pipeline() -> None:
