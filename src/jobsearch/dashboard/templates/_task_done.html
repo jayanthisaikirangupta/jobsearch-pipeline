@@ -1,0 +1,13 @@
+{# Task-done response. The pending banner self-targets, so this fragment
+   replaces the banner element entirely (empty placeholder = stops polling).
+   The OOB swaps then refresh the queue and tracker panels in the same
+   response so the row's new state shows everywhere. #}
+<div id="task-status"></div>
+
+<div id="queue" hx-swap-oob="innerHTML">
+  {% include "_action_queue.html" %}
+</div>
+
+<div id="tracker" hx-swap-oob="innerHTML">
+  {% include "_tracker.html" %}
+</div>

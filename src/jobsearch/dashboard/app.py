@@ -242,21 +242,21 @@ def _pending_response(request: Request, task_id: str, kind: str,
 
 @app.get("/tasks/{task_id}", response_class=HTMLResponse)
 def task_poll(request: Request, task_id: str) -> HTMLResponse:
-    """Poll a task. While running: returns the same pending row (HTMX retries
-    via hx-trigger='every 1.5s'). On done: returns the refreshed Action Queue
-    + tracker (OOB swap) so the row's state updates everywhere. On error:
-    returns a toast that HTMX appends to the toast container."""
+    """Poll a task. The polling banner self-targets (hx-target=this), so:
+      running → return _task_pending (banner re-renders in place)
+      done    → return _task_done (banner cleared, queue+tracker OOB-refresh)
+      error   → return _task_error (red banner with retry, in place)
+      missing → treat as done (panels refresh, banner clears).
+    """
     t = tasks.get(task_id)
-    if not t:
-        # Task evicted by reaper or never existed; just refresh the panels
+    if not t or t.status == "done":
         return templates.TemplateResponse(
-            "_after_status_change.html",
+            "_task_done.html",
             {
                 "request": request,
                 "rows": data.action_queue(),
                 "tracker_rows": data.tracker_view(),
                 "STATUS_ACTIONS": data.STATUS_ACTIONS,
-                "stats": data.stats(),
             },
         )
     if t.status == "running":
@@ -269,25 +269,14 @@ def task_poll(request: Request, task_id: str) -> HTMLResponse:
                 "job_id": t.job_id,
             },
         )
-    if t.status == "error":
-        return templates.TemplateResponse(
-            "_task_error.html",
-            {
-                "request": request,
-                "task_id": t.id,
-                "kind": t.kind,
-                "job_id": t.job_id,
-                "error": t.error,
-            },
-        )
-    # status == "done"
+    # status == "error"
     return templates.TemplateResponse(
-        "_after_status_change.html",
+        "_task_error.html",
         {
             "request": request,
-            "rows": data.action_queue(),
-            "tracker_rows": data.tracker_view(),
-            "STATUS_ACTIONS": data.STATUS_ACTIONS,
-            "stats": data.stats(),
+            "task_id": t.id,
+            "kind": t.kind,
+            "job_id": t.job_id,
+            "error": t.error,
         },
     )
