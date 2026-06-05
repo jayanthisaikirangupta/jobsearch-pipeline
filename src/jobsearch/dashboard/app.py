@@ -98,15 +98,56 @@ def tracker_partial(request: Request, status: str = "") -> HTMLResponse:
     )
 
 
+# UI-friendly aliases for status names. The dashboard offers labels users
+# expect ("skipped"); the DB stores the canonical status name. Map at the
+# route boundary so the rest of the pipeline keeps speaking SQL.
+_STATUS_ALIASES = {
+    "skipped": "withdrawn",
+}
+
+
+def _ensure_tracker_row(job_id: str) -> dict | None:
+    """Return the tracker row for job_id, creating it from jobs_scored.parquet
+    if it doesn't exist yet. Returns None if the job isn't in scored either."""
+    rec = db.get(job_id)
+    if rec:
+        return rec
+    # Brand-new queue row — never tailored, never tracked. Look up the
+    # scored parquet so we can create a meaningful tracker row.
+    import pandas as pd
+    from ..config import get_settings
+    settings = get_settings()
+    src = settings.data_dir / "jobs_scored.parquet"
+    if not src.exists():
+        return None
+    df = pd.read_parquet(src)
+    match = df[df["id"] == job_id]
+    if match.empty:
+        return None
+    r = match.iloc[0]
+    db.upsert_application(
+        job_id=job_id,
+        title=str(r.get("title", "") or ""),
+        company=str(r.get("company", "") or ""),
+        url=str(r.get("url", "") or ""),
+        grade=str(r.get("grade", "") or ""),
+        score=int(r.get("score_total", 0) or 0),
+        resume_path="",
+        status="discovered",
+    )
+    return db.get(job_id)
+
+
 @app.post("/tracker/{job_id}/status", response_class=HTMLResponse)
 def update_status(request: Request, job_id: str,
                   new_status: str = Form(...)) -> HTMLResponse:
-    if new_status not in db.VALID_STATUSES:
+    canonical = _STATUS_ALIASES.get(new_status, new_status)
+    if canonical not in db.VALID_STATUSES:
         raise HTTPException(400, f"Invalid status {new_status!r}")
-    rec = db.get(job_id)
+    rec = _ensure_tracker_row(job_id)
     if not rec:
-        raise HTTPException(404, f"Job {job_id} not in tracker")
-    db.set_status(job_id, new_status, notes="updated via dashboard")
+        raise HTTPException(404, f"Job {job_id} not in scored data — re-ingest?")
+    db.set_status(job_id, canonical, notes="updated via dashboard")
     # Re-render BOTH panels so the row moves between queue/tracker correctly.
     # HTMX swaps both targets via hx-swap-oob in the response.
     return templates.TemplateResponse(
