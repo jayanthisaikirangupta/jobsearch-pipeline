@@ -1,0 +1,47 @@
+# Copy to config/profile.yaml and fill in. profile.yaml is gitignored.
+candidate:
+  full_name: Your Full Name
+  email: you@example.com
+  phone: "+44 7000 000000"
+  location: City, UK
+  linkedin: LinkedIn
+  linkedin_url: https://www.linkedin.com/in/your-profile/
+  github: GitHub
+  github_url: https://github.com/your-username
+  visa_status: "UK Graduate visa (expires YYYY-MM-DD), need Skilled Worker sponsor"
+  notice_period_weeks: 4
+  tagline: "Your Title  |  Subtitle"
+
+skills_must_have:
+  - python
+  - llm
+  - openai
+  - anthropic
+  - rag
+  - langchain
+  - aws
+  - azure
+
+skills_nice_to_have:
+  - kubernetes
+  - kafka
+  - snowflake
+  - typescript
+  - react
+  - java
+
+target_socs: [2133, 2134, 2139, 2433]
+
+# Used by scoring. £33,400 is the absolute Graduate-switcher floor.
+# £38,290 is the SOC 2134 70%-of-going-rate threshold for safety.
+salary_floor_gbp: 33400
+salary_target_gbp: 38290
+
+target_locations:
+  - London
+  - Edinburgh
+  - Manchester
+  - Cambridge
+  - Remote UK
+
+avoid_companies: []

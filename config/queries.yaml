@@ -1,0 +1,117 @@
+# Master query config. Tuned for Sai's profile (AI/GenAI + full-stack + regulated data)
+# and the visa goal: cast a wide-but-relevant net across England + Scotland tech hubs,
+# not just London.
+#
+# Structure:
+#   1. Core AI/ML (5 queries × multiple sources) — your primary strength
+#   2. SWE / full-stack (3 queries) — your TCS-Lloyds + K+N backend depth
+#   3. Data engineering / platform (2 queries) — SOC 2133 fit
+#   4. Scotland-specific (4 queries) — Edinburgh / Glasgow regulated finance + tech
+#   5. England regional hubs (3 queries) — Cambridge / Manchester / Bristol
+#
+# Glassdoor disabled across the board — see prior commit; JobSpy's UK Glassdoor
+# scraper is consistently anti-bot-blocked. Re-enable per-query if it unbreaks.
+
+defaults:
+  country_indeed: UK
+  hours_old: 168          # 7 days
+  results_wanted: 50
+  description_format: markdown
+
+queries:
+  # ===== 1. Core AI / ML / GenAI roles (UK-wide) =====
+  - label: ai-engineer-uk
+    search_term: "AI Engineer"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: genai-llm-uk
+    search_term: "GenAI Engineer OR LLM Engineer OR Applied AI"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: ml-engineer-uk
+    search_term: "Machine Learning Engineer"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: solutions-engineer-uk
+    search_term: "Solutions Engineer AI OR Forward Deployed Engineer OR Applied AI Engineer"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: ai-platform-uk
+    search_term: "MLOps Engineer OR ML Platform Engineer OR AI Platform"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  # ===== 2. Software Engineering (your full-stack + Java/Spring depth) =====
+  - label: senior-swe-uk
+    search_term: "Senior Software Engineer Python OR Java"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: full-stack-uk
+    search_term: "Full Stack Engineer Angular Java"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: backend-java-uk
+    search_term: "Backend Engineer Java Spring Boot"
+    location: "United Kingdom"
+    sources: [indeed]
+
+  # ===== 3. Data engineering / platform =====
+  - label: data-engineer-uk
+    search_term: "Data Engineer"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
+
+  - label: senior-data-platform-uk
+    search_term: "Senior Data Engineer OR Data Platform Engineer"
+    location: "United Kingdom"
+    sources: [indeed]
+
+  # ===== 4. Scotland-specific (Edinburgh + Glasgow are real tech hubs:
+  #         FinTech via RBS/Lloyds presence, AI startups, FanDuel, etc.) =====
+  - label: ai-engineer-edinburgh
+    search_term: "AI Engineer OR Machine Learning Engineer"
+    location: "Edinburgh, Scotland"
+    sources: [indeed, linkedin]
+
+  - label: swe-edinburgh
+    search_term: "Senior Software Engineer Python OR Java"
+    location: "Edinburgh, Scotland"
+    sources: [indeed, linkedin]
+
+  - label: ai-engineer-glasgow
+    search_term: "AI Engineer OR Software Engineer"
+    location: "Glasgow, Scotland"
+    sources: [indeed]
+
+  - label: data-engineer-scotland
+    search_term: "Data Engineer"
+    location: "Scotland"
+    sources: [indeed, linkedin]
+
+  # ===== 5. England regional hubs (avoid London-only blindspot) =====
+  - label: ai-cambridge
+    search_term: "AI Engineer OR Machine Learning Engineer"
+    location: "Cambridge, England"
+    sources: [indeed, linkedin]
+
+  - label: tech-manchester
+    search_term: "Senior Software Engineer OR AI Engineer OR Data Engineer"
+    location: "Manchester, England"
+    sources: [indeed, linkedin]
+
+  - label: tech-bristol
+    search_term: "Software Engineer OR AI Engineer"
+    location: "Bristol, England"
+    sources: [indeed]
+
+  # ===== 6. Sai's home patch (Milton Keynes commute) =====
+  - label: tech-milton-keynes
+    search_term: "Software Engineer OR AI Engineer OR Data Engineer"
+    location: "Milton Keynes, England"
+    sources: [indeed, linkedin]

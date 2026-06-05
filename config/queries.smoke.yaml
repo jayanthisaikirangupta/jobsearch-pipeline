@@ -1,0 +1,11 @@
+defaults:
+  country_indeed: UK
+  hours_old: 72
+  results_wanted: 5
+  description_format: markdown
+
+queries:
+  - label: smoke
+    search_term: "AI Engineer"
+    location: "Milton Keynes, United Kingdom"
+    sources: [indeed]

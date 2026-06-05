@@ -1,0 +1,43 @@
+# --- Secrets / PII (local-only) -------------------------------------------
+# config/profile.yaml has phone, email, visa status. profile.yaml.example is
+# the committed template; copy + fill on a fresh clone.
+.env
+.env.local
+config/profile.yaml
+*.pem
+*.key
+
+# --- Pipeline outputs (regenerable, may contain PII) ----------------------
+data/
+output/
+*.sqlite
+*.db
+*.parquet
+
+# --- Python ---------------------------------------------------------------
+.venv/
+venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
+.tox/
+
+# --- IDEs / editors -------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db
+
+# --- Claude Code workspace state ------------------------------------------
+# .claude/ holds session state, agents, skills. CLAUDE.md is local notes.
+.claude/
+CLAUDE.md

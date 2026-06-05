@@ -1,0 +1,1 @@
+"""Sponsor register fetch + filter."""
