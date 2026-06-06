@@ -1,11 +1,16 @@
 """A-F fit score.
 
-Five dimensions, each 0-20, summed to 0-100:
+Five dimensions, each 0-20, summed to 0-100, then a small +/- tier
+adjustment for seniority match:
+
   1. salary           — does the posted salary clear the visa floor?
   2. soc_eligibility  — title heuristically maps to a Table 1 SOC?
   3. skills_overlap   — JD keyword overlap with profile must/nice skills.
   4. location         — target locations + remote.
   5. sponsor_signal   — fuzzy-match score from the sponsor filter.
+  +/- tier_match      — bonus if title is mid-level, penalty if it's junior
+                        (overqualified flag) or staff/principal/director/manager
+                        (under-qualified flag). Clamped to ±10.
 
 Total -> grade:
   >= 85 A | >= 70 B | >= 55 C | >= 40 D | else F
@@ -41,6 +46,7 @@ class ScoreBreakdown:
     skills_overlap: int
     location: int
     sponsor_signal: int
+    tier_match: int = 0
 
     @property
     def total(self) -> int:
@@ -50,12 +56,15 @@ class ScoreBreakdown:
             + self.skills_overlap
             + self.location
             + self.sponsor_signal
+            + self.tier_match
         )
 
     @property
     def grade(self) -> str:
+        # Floor at 0 in case tier_match is strongly negative on a low base
+        score = max(0, self.total)
         for cutoff, g in GRADE_BANDS:
-            if self.total >= cutoff:
+            if score >= cutoff:
                 return g
         return "F"
 
@@ -108,28 +117,86 @@ def _score_soc(title: str, target_socs: list[int]) -> int:
 
 
 def _score_skills(description: str, must: list[str], nice: list[str]) -> int:
+    """Score 0-20 based on JD's overlap with confirmed must/nice skills.
+
+    Rebalanced 2026: count distinct must-have hits and reward the absolute
+    count (not ratio) since modern JDs typically list 8-12 keywords. Hitting
+    5 must-haves out of 15 is genuinely strong, ratio-based scoring under-
+    counts that. Caps at 20.
+    """
     text = (description or "").lower()
     if not text:
         return 0
-    must_hits = sum(1 for k in must if re.search(rf"\b{re.escape(k.lower())}\b", text))
-    nice_hits = sum(1 for k in nice if re.search(rf"\b{re.escape(k.lower())}\b", text))
-    must_pts = min(15, (must_hits / max(len(must), 1)) * 15)
-    nice_pts = min(5, (nice_hits / max(len(nice), 1)) * 5)
+    # Use sub-string match for multi-word skills like "spring boot", "ci/cd"
+    must_hits = sum(1 for k in must if k.lower() in text)
+    nice_hits = sum(1 for k in nice if k.lower() in text)
+    # Reward absolute count: 4+ must-hits = full 15, scales linearly below
+    must_pts = min(15, (must_hits / 4) * 15)
+    nice_pts = min(5, (nice_hits / 4) * 5)
     return int(must_pts + nice_pts)
 
 
+# Tier signal keywords. Order matters: more specific patterns first.
+_TIER_PATTERNS: list[tuple[int, list[str]]] = [
+    (-15, ["intern", "internship", "graduate", "junior", "entry level",
+           "entry-level", "trainee", "apprentice"]),
+    (-10, ["principal", "staff engineer", "staff software", "staff data",
+           "staff machine", "staff ai", "head of", "director", "vp",
+           "engineering manager", "vice president"]),
+    # 'Lead' is borderline — sometimes means tech lead (5+ yrs), sometimes
+    # senior IC contributor. Small penalty.
+    (-5, ["tech lead", "team lead", " lead "]),
+    # 'Senior' in title but no obvious AI specialty cap is fine for Sai's
+    # 5 yrs on Java/full-stack. No penalty.
+    # Mid-level (no prefix) gets a small bonus to surface them more.
+    (3, ["software engineer", "ai engineer", "data engineer",
+         "full stack engineer", "full-stack engineer", "backend engineer",
+         "frontend engineer", "cloud engineer", "devops engineer",
+         "platform engineer"]),
+]
+
+
+def _score_tier(title: str) -> int:
+    """Tier penalty/bonus based on title seniority. Returns int in roughly
+    [-15, +3]. Applied AFTER the 5 main components, so a title that's a
+    perfect match for Sai's tier (mid-level / senior-on-Java) lifts past
+    the A boundary; a junior or staff title drops the row out of A/B."""
+    if not title:
+        return 0
+    t = " " + title.lower() + " "
+    for adjustment, patterns in _TIER_PATTERNS:
+        for p in patterns:
+            if p in t:
+                return adjustment
+    return 0
+
+
+_UK_KEYWORDS = (
+    "united kingdom", "uk", " gb", "england", "scotland", "wales",
+    "northern ireland", "remote uk", "remote, uk", "remote-uk",
+    "london", "manchester", "edinburgh", "glasgow", "birmingham",
+    "cambridge", "bristol", "leeds", "liverpool", "sheffield",
+    "newcastle", "cardiff", "belfast", "aberdeen", "milton keynes",
+    "reading", "oxford", "nottingham", "brighton", "coventry", "york",
+    "southampton", "portsmouth", "swansea", "dundee", "leicester",
+    "exeter", "norwich", "bath", "ipswich",
+)
+
+
 def _score_location(loc: str, targets: list[str]) -> int:
+    """Sai is willing to relocate anywhere in the UK, so any UK location
+    earns full marks. Non-UK roles drop hard. Remote/hybrid is slightly
+    preferred (less commute uncertainty) but UK on-site still hits 20."""
     if not loc:
-        return 8
+        return 10  # missing — neutral, common on Indeed
     loc_l = loc.lower()
+    is_uk = any(kw in loc_l for kw in _UK_KEYWORDS)
+    if is_uk:
+        return 20
     if "remote" in loc_l or "hybrid" in loc_l:
-        return 18
-    for t in targets:
-        if t.lower() in loc_l:
-            return 20
-    if "united kingdom" in loc_l or "uk" in loc_l:
-        return 12
-    return 5
+        # Could still be UK-based remote; give partial credit
+        return 14
+    return 4  # not UK, not remote — almost certainly mismatched
 
 
 def _score_sponsor(score: float | int | None) -> int:
@@ -171,6 +238,7 @@ def score_jobs() -> Path:
             ),
             location=_score_location(r.get("location", ""), profile.target_locations),
             sponsor_signal=_score_sponsor(r.get("sponsor_score")),
+            tier_match=_score_tier(r.get("title", "")),
         )
         rows.append(
             {
@@ -181,6 +249,7 @@ def score_jobs() -> Path:
                 "score_skills": bd.skills_overlap,
                 "score_location": bd.location,
                 "score_sponsor_signal": bd.sponsor_signal,
+                "score_tier_match": bd.tier_match,
                 "annual_gbp": annual,
             }
         )

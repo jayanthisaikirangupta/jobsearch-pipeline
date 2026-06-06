@@ -45,21 +45,28 @@ queries:
     location: "United Kingdom"
     sources: [indeed, linkedin]
 
-  # ===== 2. Software Engineering (your full-stack + Java/Spring depth) =====
-  - label: senior-swe-uk
-    search_term: "Senior Software Engineer Python OR Java"
+  # ===== 2. Pathway A: Full-Stack / Java / Angular roles (5 yrs Sai's
+  #         strongest defensible experience). Mid-level tier on purpose —
+  #         the scorer down-weights principal/staff/director.
+  - label: java-spring-engineer-uk
+    search_term: "Java Spring Boot Engineer"
     location: "United Kingdom"
     sources: [indeed, linkedin]
 
-  - label: full-stack-uk
-    search_term: "Full Stack Engineer Angular Java"
+  - label: full-stack-java-angular-uk
+    search_term: "Full Stack Engineer Java Angular"
     location: "United Kingdom"
     sources: [indeed, linkedin]
 
-  - label: backend-java-uk
-    search_term: "Backend Engineer Java Spring Boot"
+  - label: angular-engineer-uk
+    search_term: "Angular Developer OR Frontend Engineer Angular"
     location: "United Kingdom"
-    sources: [indeed]
+    sources: [indeed, linkedin]
+
+  - label: software-engineer-uk
+    search_term: "Software Engineer Python OR Java"
+    location: "United Kingdom"
+    sources: [indeed, linkedin]
 
   # ===== 3. Data engineering / platform =====
   - label: data-engineer-uk
@@ -76,17 +83,17 @@ queries:
   #         FinTech via RBS/Lloyds presence, AI startups, FanDuel, etc.) =====
   - label: ai-engineer-edinburgh
     search_term: "AI Engineer OR Machine Learning Engineer"
-    location: "Edinburgh, Scotland"
+    location: "Scotland"
     sources: [indeed, linkedin]
 
   - label: swe-edinburgh
     search_term: "Senior Software Engineer Python OR Java"
-    location: "Edinburgh, Scotland"
+    location: "Scotland"
     sources: [indeed, linkedin]
 
   - label: ai-engineer-glasgow
     search_term: "AI Engineer OR Software Engineer"
-    location: "Glasgow, Scotland"
+    location: "Scotland"
     sources: [indeed]
 
   - label: data-engineer-scotland
