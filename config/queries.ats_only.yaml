@@ -1,0 +1,19 @@
+# Smoke-test config — runs ONLY the new ATS sources so we can quickly
+# confirm the pipeline integrates them correctly without burning JobSpy
+# request budgets.
+defaults:
+  country_indeed: UK
+  hours_old: 168
+  results_wanted: 50
+  description_format: markdown
+
+queries:
+  - label: ats-engineer
+    search_term: "Engineer"
+    location: "United Kingdom"
+    sources: [greenhouse, lever]
+
+  - label: ats-ai
+    search_term: "AI OR Machine Learning OR LLM"
+    location: "United Kingdom"
+    sources: [greenhouse, lever]

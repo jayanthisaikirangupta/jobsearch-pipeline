@@ -56,6 +56,16 @@ def run(config_path: str | Path) -> Path:
     all_df = pd.concat(frames, ignore_index=True)
     all_df = all_df.drop_duplicates(subset=["id"], keep="first")
 
+    # Schema normalisation across sources. JobSpy sources return Timestamp
+    # for posted_at; ATS sources return ISO-string. Coerce to a single
+    # string representation so parquet write doesn't choke on mixed types.
+    all_df["posted_at"] = all_df["posted_at"].astype("string")
+
+    # Numeric salary fields likewise: JobSpy returns float, Adzuna returns
+    # int, ATS leaves NA. Coerce min/max to float64 with NaN.
+    for col in ("min_amount", "max_amount"):
+        all_df[col] = pd.to_numeric(all_df[col], errors="coerce")
+
     # Semantic dedup: same role posted via different URLs / sources collapses
     # to one row. Adds dup_count + dup_sources columns. See ingest/dedup.py.
     from . import dedup

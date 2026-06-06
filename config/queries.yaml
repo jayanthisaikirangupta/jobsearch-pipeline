@@ -115,3 +115,35 @@ queries:
     search_term: "Software Engineer OR AI Engineer OR Data Engineer"
     location: "Milton Keynes, England"
     sources: [indeed, linkedin]
+
+  # ===== 7. Direct ATS sources (Greenhouse + Lever) =====
+  # These hit company career pages directly via public APIs. Token list
+  # in config/sponsor_tokens.yaml. 100% sponsor-licensed since we hand-pick
+  # the companies. No anti-bot risk, no token costs.
+  - label: ats-engineer-uk
+    search_term: "Engineer"
+    location: "United Kingdom"
+    sources: [greenhouse, lever]
+
+  - label: ats-ai-uk
+    search_term: "AI OR Machine Learning OR LLM OR Data"
+    location: "United Kingdom"
+    sources: [greenhouse, lever]
+
+  # ===== 8. Adzuna (covers companies not on Greenhouse/Lever) =====
+  # Free tier needs ADZUNA_APP_ID + ADZUNA_APP_KEY in .env (sign up at
+  # developer.adzuna.com). Without those the source quietly returns 0.
+  - label: adzuna-ai-uk
+    search_term: "AI Engineer"
+    location: "United Kingdom"
+    sources: [adzuna]
+
+  - label: adzuna-data-engineer-uk
+    search_term: "Senior Data Engineer"
+    location: "United Kingdom"
+    sources: [adzuna]
+
+  - label: adzuna-swe-uk
+    search_term: "Senior Software Engineer Python OR Java"
+    location: "United Kingdom"
+    sources: [adzuna]

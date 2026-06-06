@@ -1,0 +1,38 @@
+# Hosted-ATS tokens for UK sponsor companies.
+#
+# Each entry lets the corresponding source (Greenhouse / Lever) hit the
+# company's public job-board API directly. Tokens are stable, public, and
+# the APIs require no auth.
+#
+# How to find a token:
+#   1. Visit careers.<company>.com or click "View all jobs" on their site.
+#   2. If the URL is boards.greenhouse.io/<TOKEN>, the TOKEN is the
+#      Greenhouse identifier. (Some are job-boards.greenhouse.io/<TOKEN>.)
+#   3. If the URL is jobs.lever.co/<SITE>, the SITE is the Lever identifier.
+#   4. Run scripts/discover_ats_tokens.py to auto-populate from the gov.uk
+#      sponsor register.
+#
+# This file is committed because it's all public info. The discovery
+# script extends it with whatever it finds.
+
+# Verified 2026-06-06 by direct API probes. Each entry has at least 1
+# UK-located posting at probe time. UK count is in the inline comment.
+greenhouse:
+  - graphcore           # 118 UK roles — AI hardware, deep ML
+  - intercom            # 45 UK
+  - monzo               # 40 UK
+  - stripe              # 30 UK
+  - elastic             # 16 UK
+  - figma               # 14 UK
+  - airbnb              # 12 UK
+  - twilio              # 9 UK
+  - mongodb             # 7 UK
+  - duolingo            # 4 UK
+  - asana               # 3 UK
+
+# Verified 2026-06-06. Lever has thinner UK adoption than Greenhouse,
+# but the salary-range fields are richer when present.
+lever:
+  - spotify             # 44 UK
+  - palantir            # 34 UK
+  - binance             # 1 UK
