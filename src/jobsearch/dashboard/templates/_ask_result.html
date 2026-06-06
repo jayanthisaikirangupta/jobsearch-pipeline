@@ -1,0 +1,17 @@
+{# Rendered answer with a copy-to-clipboard button. The textarea preserves
+   newlines and lets the user select-all easily. The answer was already
+   appended to output/answers/<id>_<co>.answers.md by the worker. #}
+<div class="ask-result">
+  <div class="ask-result-head">
+    <strong>Answer</strong>
+    <span class="muted small">— saved to output/answers/</span>
+    <button type="button" class="icon-btn"
+            onclick="
+              const ta = document.getElementById('ask-answer-text');
+              navigator.clipboard.writeText(ta.value);
+              this.textContent = 'Copied';
+              setTimeout(() =&gt; { this.textContent = 'Copy'; }, 1500);
+            ">Copy</button>
+  </div>
+  <textarea id="ask-answer-text" readonly>{{ answer }}</textarea>
+</div>

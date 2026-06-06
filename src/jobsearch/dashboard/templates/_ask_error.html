@@ -1,0 +1,8 @@
+{# Ask error — shown inline in the modal so the user can see the problem
+   (e.g. SSO expired) and adjust their question / retry without leaving. #}
+<div class="ask-error">
+  <strong>Generation failed:</strong> {{ error }}
+  {% if 'sso' in error|lower or 'token' in error|lower or 'expired' in error|lower or 'credential' in error|lower %}
+    <div class="muted small">Hint: <code>aws sso login --profile fitai</code> then click Generate again.</div>
+  {% endif %}
+</div>

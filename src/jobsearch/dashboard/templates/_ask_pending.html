@@ -1,0 +1,10 @@
+{# Ask pending — self-targets and polls /ask-result/{task_id} every 1.5s.
+   When done, swaps to _ask_result.html (the answer text). #}
+<div class="ask-pending"
+     hx-get="/ask-result/{{ task_id }}"
+     hx-trigger="every 1500ms"
+     hx-target="this"
+     hx-swap="outerHTML">
+  <span class="spinner"></span>
+  <span class="muted">Generating answer… (10-30s)</span>
+</div>

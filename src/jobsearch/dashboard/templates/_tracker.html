@@ -42,6 +42,10 @@
           {% if r.resume_path %}
             <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄</a>
           {% endif %}
+          <button class="icon-btn"
+                  hx-get="/ask/{{ r.job_id }}"
+                  hx-target="#ask-modal-host"
+                  hx-swap="innerHTML">💬</button>
           {% for next_status in STATUS_ACTIONS.get(r.status, []) %}
             <form hx-post="/tracker/{{ r.job_id }}/status"
                   hx-target="#queue" hx-swap="innerHTML"

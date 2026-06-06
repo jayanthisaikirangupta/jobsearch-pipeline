@@ -212,6 +212,68 @@
       opacity: 0.5;
       cursor: wait;
     }
+
+    /* --- Ask modal (overlay + card) --- */
+    #ask-modal-host:empty { display: none; }
+    .ask-modal {
+      position: fixed; inset: 0;
+      background: rgba(15, 23, 42, 0.45);
+      display: flex; align-items: flex-start; justify-content: center;
+      padding: 60px 16px;
+      z-index: 100;
+    }
+    .ask-modal-card {
+      background: white;
+      border-radius: 10px;
+      box-shadow: 0 20px 50px rgba(0,0,0,0.25);
+      width: 720px; max-width: 100%;
+      padding: 18px 22px 22px;
+      display: flex; flex-direction: column; gap: 12px;
+      max-height: calc(100vh - 120px); overflow-y: auto;
+    }
+    .ask-modal-head {
+      display: flex; justify-content: space-between; align-items: flex-start;
+      gap: 10px; padding-bottom: 8px; border-bottom: 1px solid var(--border);
+    }
+    .ask-field { display: flex; flex-direction: column; gap: 4px; flex: 1; }
+    .ask-field label {
+      font-size: 11px; text-transform: uppercase; letter-spacing: 0.3px;
+      color: var(--gray); font-weight: 600;
+    }
+    .ask-field textarea, .ask-field input, .ask-field select {
+      font: inherit; padding: 8px 10px;
+      border: 1px solid var(--border); border-radius: 5px;
+      font-family: inherit; font-size: 13px;
+    }
+    .ask-field textarea { resize: vertical; min-height: 70px; }
+    .ask-row {
+      display: flex; gap: 10px; align-items: flex-end;
+    }
+    .ask-row .ask-field { max-width: 200px; }
+    .ask-row #ask-submit { padding: 9px 16px; height: fit-content; }
+    .ask-pending {
+      display: flex; align-items: center; gap: 8px;
+      padding: 12px; color: var(--gray); font-size: 13px;
+    }
+    .ask-result {
+      display: flex; flex-direction: column; gap: 6px;
+      padding-top: 8px; border-top: 1px solid var(--border);
+    }
+    .ask-result-head {
+      display: flex; align-items: center; gap: 8px;
+    }
+    .ask-result-head .icon-btn { margin-left: auto; }
+    .ask-result textarea {
+      font: inherit;
+      width: 100%; min-height: 200px;
+      padding: 12px; border: 1px solid var(--border); border-radius: 5px;
+      background: #fafbfc; line-height: 1.5; resize: vertical;
+    }
+    .ask-error {
+      padding: 12px; margin-top: 8px;
+      background: #fef2f2; border: 1px solid #fecaca; color: #7f1d1d;
+      border-radius: 5px; font-size: 13px;
+    }
     @media (max-width: 1100px) {
       main { grid-template-columns: 1fr; }
       section.panel { max-height: none; }
@@ -233,6 +295,7 @@
   </header>
 
   <div id="task-status"></div>
+  <div id="ask-modal-host"></div>
 
   <main>
     <section class="panel">

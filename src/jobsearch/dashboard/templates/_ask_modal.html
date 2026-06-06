@@ -1,0 +1,53 @@
+{# Ask modal. Returned by GET /ask/{job_id}, slotted into #ask-modal-host
+   (a fixed div in index.html). Form POSTs to /ask/{job_id}; the response
+   replaces #ask-body with the pending placeholder, then the polling
+   element swaps in the rendered answer or an error. #}
+<div class="ask-modal" id="ask-modal" role="dialog" aria-modal="true">
+  <div class="ask-modal-card">
+    <div class="ask-modal-head">
+      <div>
+        <div class="muted small">Ask about</div>
+        <strong>{{ company or "this role" }}</strong>
+        {% if title %}<span class="muted"> — {{ title }}</span>{% endif %}
+        <div class="muted small">job_id: <code>{{ job_id }}</code></div>
+      </div>
+      <button type="button" class="icon-btn"
+              onclick="document.getElementById('ask-modal-host').innerHTML=''"
+              aria-label="Close">✕</button>
+    </div>
+
+    <form id="ask-form"
+          hx-post="/ask/{{ job_id }}"
+          hx-target="#ask-body"
+          hx-swap="innerHTML"
+          hx-disabled-elt="#ask-submit">
+      <div class="ask-field">
+        <label for="ask-question">Question</label>
+        <textarea id="ask-question" name="question" rows="3" required
+                  placeholder='e.g. "Why this role?" or "Write a short message to the hiring team about my interest."'></textarea>
+      </div>
+
+      <div class="ask-row">
+        <div class="ask-field">
+          <label for="ask-tone">Tone</label>
+          <select id="ask-tone" name="tone">
+            <option value="professional" selected>professional</option>
+            <option value="concise">concise</option>
+            <option value="warm">warm</option>
+            <option value="formal">formal</option>
+          </select>
+        </div>
+        <div class="ask-field">
+          <label for="ask-max-words">Max words (optional)</label>
+          <input id="ask-max-words" name="max_words" type="number" min="1"
+                 placeholder="e.g. 150" />
+        </div>
+        <button type="submit" id="ask-submit" class="icon-btn icon-btn-primary">
+          Generate
+        </button>
+      </div>
+    </form>
+
+    <div id="ask-body"></div>
+  </div>
+</div>

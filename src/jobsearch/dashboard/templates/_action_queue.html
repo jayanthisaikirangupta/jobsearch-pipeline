@@ -55,6 +55,14 @@
             <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄 CV</a>
           {% endif %}
 
+          {# Ask: opens a modal that talks to the answer generator. Fine
+             whether or not a resume exists yet — the answer module just
+             grounds in the JD if no resume. #}
+          <button class="icon-btn"
+                  hx-get="/ask/{{ r.job_id }}"
+                  hx-target="#ask-modal-host"
+                  hx-swap="innerHTML">💬 Ask</button>
+
           {# Tailor: only if no resume yet. Re-tailoring an existing one
              requires deleting the file first or using --force on the CLI;
              the dashboard intentionally doesn't expose a re-tailor footgun. #}

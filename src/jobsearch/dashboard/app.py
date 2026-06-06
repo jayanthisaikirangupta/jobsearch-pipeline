@@ -226,6 +226,110 @@ def review_start(request: Request, job_id: str) -> HTMLResponse:
     return _pending_response(request, task_id, "review", job_id)
 
 
+# --- Ask (answer generator) -----------------------------------------------
+
+def _answer_job(job_id: str, question: str, tone: str,
+                max_words: int | None) -> str:
+    """Worker function — runs in a thread."""
+    from ..answer import answer as answer_mod
+    return answer_mod.answer(job_id, question, tone=tone,
+                             max_words=max_words, append=True)
+
+
+@app.get("/ask/{job_id}", response_class=HTMLResponse)
+def ask_modal(request: Request, job_id: str) -> HTMLResponse:
+    """Open the Ask modal pre-filled with the job's company + title."""
+    rec = db.get(job_id)
+    company, title = "", ""
+    if rec:
+        company, title = rec.get("company", ""), rec.get("title", "")
+    else:
+        # Job in the queue but not tracked yet — pull from scored parquet
+        import pandas as pd
+        from ..config import get_settings
+        scored_p = get_settings().data_dir / "jobs_scored.parquet"
+        if scored_p.exists():
+            df = pd.read_parquet(scored_p)
+            match = df[df["id"] == job_id]
+            if not match.empty:
+                r = match.iloc[0]
+                company, title = str(r.get("company", "")), str(r.get("title", ""))
+    return templates.TemplateResponse(
+        "_ask_modal.html",
+        {
+            "request": request,
+            "job_id": job_id,
+            "company": company,
+            "title": title,
+        },
+    )
+
+
+@app.post("/ask/{job_id}", response_class=HTMLResponse)
+def ask_start(request: Request, job_id: str,
+              question: str = Form(...),
+              tone: str = Form("professional"),
+              max_words: str = Form("")) -> HTMLResponse:
+    """Kick off an answer generation in the background. Returns a polling
+    placeholder; once done, the modal shows the rendered answer text."""
+    if not question.strip():
+        raise HTTPException(400, "Question is required")
+    rec = db.get(job_id)
+    # answer.answer needs the job in the tracker so it can find resume_path.
+    # If it isn't there yet, create a stub so the answer module finds it.
+    if not rec:
+        _ensure_tracker_row(job_id)
+    mw: int | None = None
+    if max_words.strip():
+        try:
+            mw = int(max_words)
+            if mw <= 0:
+                mw = None
+        except ValueError:
+            mw = None
+    task_id = tasks.start(
+        "answer", job_id, _answer_job, job_id, question, tone, mw,
+    )
+    return templates.TemplateResponse(
+        "_ask_pending.html",
+        {
+            "request": request,
+            "task_id": task_id,
+            "job_id": job_id,
+            "question": question,
+        },
+    )
+
+
+@app.get("/ask-result/{task_id}", response_class=HTMLResponse)
+def ask_poll(request: Request, task_id: str) -> HTMLResponse:
+    """Poll an answer task. While running: same pending placeholder.
+    On done: renders the answer text with a copy button. On error: shows
+    the error message inline so the user can adjust the question + retry."""
+    t = tasks.get(task_id)
+    if not t:
+        return HTMLResponse('<div class="muted">Task expired. Close and try again.</div>')
+    if t.status == "running":
+        return templates.TemplateResponse(
+            "_ask_pending.html",
+            {
+                "request": request,
+                "task_id": t.id,
+                "job_id": t.job_id,
+                "question": "",  # already shown by the original render
+            },
+        )
+    if t.status == "error":
+        return templates.TemplateResponse(
+            "_ask_error.html",
+            {"request": request, "error": t.error},
+        )
+    return templates.TemplateResponse(
+        "_ask_result.html",
+        {"request": request, "answer": t.result or ""},
+    )
+
+
 def _pending_response(request: Request, task_id: str, kind: str,
                       job_id: str) -> HTMLResponse:
     """Render the placeholder row that polls until the task finishes."""

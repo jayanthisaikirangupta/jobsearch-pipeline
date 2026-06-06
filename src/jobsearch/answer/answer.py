@@ -85,21 +85,23 @@ def _candidate_brief() -> str:
 
 
 def _load_job(job_id: str) -> tuple[dict, str]:
-    """Return (tracker_record, jd_text). Raises if either is missing."""
+    """Return (tracker_record, jd_text). Tracker is required; JD text is
+    a best-effort fetch from the scored parquet. If the posting has
+    expired upstream and is no longer in the parquet, returns an empty JD
+    string — the answer is then grounded in the resume + tracker metadata
+    only. The caller is free to include JD context in the question itself."""
     record = db.get(job_id)
     if not record:
         raise KeyError(f"No tracked job with id {job_id}")
 
     settings = get_settings()
     scored_path = settings.data_dir / "jobs_scored.parquet"
-    if not scored_path.exists():
-        raise FileNotFoundError(f"jobs_scored.parquet missing — run `score run` first")
-
-    scored = pd.read_parquet(scored_path)
-    match = scored[scored["id"] == job_id]
-    if match.empty:
-        raise KeyError(f"Job {job_id} not in scored parquet — was it filtered out?")
-    jd_text = str(match.iloc[0].get("description", "") or "")
+    jd_text = ""
+    if scored_path.exists():
+        scored = pd.read_parquet(scored_path)
+        match = scored[scored["id"] == job_id]
+        if not match.empty:
+            jd_text = str(match.iloc[0].get("description", "") or "")
     return record, jd_text
 
 
