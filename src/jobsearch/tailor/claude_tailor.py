@@ -64,11 +64,45 @@ Augmentation rules — these are not optional:
 4. If the inventory does not contain anything relevant to a JD requirement, leave that gap alone — DO NOT invent.
 5. Augmented bullets/projects must be written in Sai's voice (first person, active verbs, plain English, no AI tells like em-dashes or "leveraged").
 
+JD-ADAPTIVE POSITIONING (this is the single biggest scoring lever):
+
+Every CV-section ordering and the headline must match what THIS JD's recruiter is screening for. The candidate's static identity ("AI Engineer | GenAI & Full-Stack Developer") is irrelevant to the recruiter — they care that the CV reads like the role they posted.
+
+1. HEADLINE (top of the CV, sits below the name): write a JD-matched 1-line role identity. **Mirror the JD's exact seniority prefix** (Senior, Lead, Staff, Principal) when present — the candidate has 6+ years and is defensibly Senior on Java/full-stack. Use the JD's role title plus 2-3 of its most-prominent skills.
+   Examples:
+     JD title = "Senior Software Engineer", JD lists Java + microservices + AWS
+       → "Senior Software Engineer | Java, Cloud-Native & Microservices"
+     JD title = "AI Engineer", JD lists RAG + agentic
+       → "AI Engineer | GenAI, RAG & Agentic Systems"
+     JD title = "Full-Stack Engineer", JD lists Angular + Node
+       → "Full-Stack Engineer | Angular, Node.js & TypeScript"
+     JD title = "Lead Backend Engineer"
+       → "Lead Backend Engineer | Java, Spring Boot & Microservices"
+   Exceptions where you must NOT mirror the seniority verbatim:
+     - "Staff" / "Principal" / "Distinguished" / "Director" / "Head of" — the candidate has 6 years, not 10+. Drop one rung: "Senior" instead of "Staff/Principal".
+     - "Junior" / "Graduate" / "Intern" / "Trainee" — the candidate is over-qualified. Use the unprefixed role title.
+   Never copy the static tagline from the candidate's existing CV — it almost always misaligns. Always recalculate per JD.
+
+2. PROFILE FIRST SENTENCE: lead with the JD's role identity (matching whatever seniority you put in the headline) plus the candidate's years of experience in that specific lane. Generic openers work, but JD-anchored openers work better.
+   Example: for a "Senior Software Engineer with Java leadership" JD, open with:
+     "Senior software engineer with 6+ years architecting and delivering Java microservices in regulated Tier 1 banking environments..."
+   Not:
+     "Software engineer with 6+ years of production backend and full-stack experience focused on shipping GenAI features..."
+   When the JD emphasises leadership / architecture ownership / mentoring, the FIRST sentence should claim those (the candidate has mentoring evidence and architecture decisions in the inventory) — don't bury them at the end.
+
+3. CORE_SKILLS ORDER: count which skill categories the JD emphasizes most (mentions of cloud / databases / messaging / observability / security / frontend / AI / etc.) and put the JD's TOP-MENTIONED categories FIRST. Within each row, lead with the JD's highest-priority items.
+   Example: BigSpark JD lists AWS first (Lambda, ECS, EKS, RDS, DynamoDB, SQS/SNS), then Kubernetes/Terraform/Helm. Cloud line should read "AWS (Lambda, ECS, EKS, ...), Kubernetes, Terraform, Azure, GCP, Docker" — not "Azure, AWS, GCP, Kubernetes, Docker".
+   For a JD that doesn't mention AI, the AI/ML skills row should be LAST or omitted entirely (one-page roles) — it crowds out scannable JD-relevant skills.
+
+4. SKILL ROWS THE JD DOESN'T CARE ABOUT: drop them entirely if they push a JD-relevant row out of the visible page. A pure backend Java JD doesn't need a "GenAI & LLM Orchestration" row.
+
 ANTI-PATTERNS to avoid (these depress scores):
 - Preserving generic placeholder bullets ("championed engineering practices", "translated AI capability for stakeholders") when a JD-specific replacement is available in the inventory. Replace them.
 - Surfacing a JD term in core_skills but never demonstrating it in any bullet. Each major JD must-have should appear in BOTH skills AND at least one experience or project bullet.
 - Using transferable framing in profile but never bridging to the JD's domain. If the JD is in pharma, fintech, or another regulated specialty Sai hasn't worked in directly, write one bullet or profile sentence that explicitly bridges his regulated-banking and supply-chain experience to the target domain.
 - Bullets without numbers OR JD-specific verbs. Every bullet should have one of: a number/metric, a JD-specific tool/framework name, or a JD-specific outcome verb. Bullets that have NEITHER are dead weight — drop them.
+- Leading the profile with "AI Engineer" or "GenAI" when the JD is for a Software / Backend / Full-Stack / Data role with no AI requirement.
+- Listing AI/GenAI skills first in core_skills when the JD doesn't mention AI.
 
 FIRST DECISION — format_choice:
 Pick ONE based on the role:
@@ -108,6 +142,7 @@ Output STRICT JSON only — no prose, no markdown fences:
 {
   "format_choice": "one_page | two_page",
   "format_reasoning": "<one sentence justifying the choice>",
+  "headline": "<JD-matched 1-line role identity, e.g. 'Software Engineer | Java, Cloud-Native & Microservices'>",
   "profile": "<professional summary tailored to the JD>",
   "core_skills": [
     {"category": "GenAI & LLM Orchestration", "items": "OpenAI API, Anthropic Claude API, ..."}

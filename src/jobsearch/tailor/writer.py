@@ -227,7 +227,11 @@ def _render_one_page(tailored: dict[str, Any], candidate, out_path: Path) -> Pat
     _run(p, candidate.full_name, font=font, bold=True, size=cfg["name_pt"], color=NAVY)
 
     # Tagline
-    if tagline := getattr(candidate, "tagline", "") or tailored.get("headline"):
+    # JD-adaptive headline takes priority over static profile tagline.
+    # Claude's tailored headline is computed per-JD; the candidate's static
+    # tagline is the fallback only when an old tailor JSON pre-dates the
+    # headline field.
+    if tagline := tailored.get("headline") or getattr(candidate, "tagline", ""):
         p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p, before=0, after=1)
         _run(p, tagline, font=font, bold=True, size=cfg["tagline_pt"], color=BLUE)
@@ -348,7 +352,11 @@ def _render_two_page(tailored: dict[str, Any], candidate, out_path: Path) -> Pat
          size=cfg["name_pt"], color=NAVY)
 
     # Tagline (centered, 11pt bold blue, sa=3pt)
-    if tagline := getattr(candidate, "tagline", "") or tailored.get("headline"):
+    # JD-adaptive headline takes priority over static profile tagline.
+    # Claude's tailored headline is computed per-JD; the candidate's static
+    # tagline is the fallback only when an old tailor JSON pre-dates the
+    # headline field.
+    if tagline := tailored.get("headline") or getattr(candidate, "tagline", ""):
         p = doc.add_paragraph(); p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         _spacing(p, before=0, after=3, line=1.0)
         _run(p, tagline, font=font, bold=True, size=cfg["tagline_pt"], color=BLUE)
