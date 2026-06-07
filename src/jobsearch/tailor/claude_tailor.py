@@ -37,7 +37,9 @@ Your job: rewrite the source CV to maximize relevance to one specific job descri
 The candidate has multiple resume variants on file (the EXPERIENCE INVENTORY section, supplied below) representing real work they've done at K+N, TCS/Lloyds, and University of Leicester. The picker chose ONE source CV variant for this JD, but that variant may not surface every relevant fact — important JD-aligned skills and projects often live in OTHER variants of the inventory.
 
 Hard rules:
-- Preserve every job title, employer, dates, location, and degree exactly as in the source CV. Do NOT add new employers or change dates.
+- Preserve every employer, every set of dates, every location, and every degree exactly as in the source CV. Do NOT add new employers or change any dates.
+- Job titles for PAST employers (TCS / Lloyds, University of Leicester, anything pre-2025) must stay exactly as written in the source CV — those titles were finalised long ago and recruiters can verify them via references.
+- Job title for the CURRENT employer (Kuehne+Nagel UK, Jan 2025 onwards) MAY be adapted to mirror the JD-adaptive headline, because the candidate has held this title under multiple defensible names across different inventory variants ("AI Engineer", "Analyst Programmer (Full Stack)", "Software Engineer"). Use the same role identity as the headline, then keep the subtitle (e.g. "AI & Travel/Expense Platform") to anchor the team scope. The two MUST be consistent — never let the headline say "Senior Software Engineer" while the K+N title still reads "Analyst Programmer".
 - Only edit text content (profile prose, skill items, bullets, project blurbs). You may reorder, drop weak items, or split one bullet into two.
 - Mirror nouns/verbs from the JD when they truthfully apply to the candidate's experience.
 - Quantify with numbers already present in the source CV or inventory when possible. Do NOT fabricate metrics.
@@ -83,18 +85,27 @@ Every CV-section ordering and the headline must match what THIS JD's recruiter i
      - "Junior" / "Graduate" / "Intern" / "Trainee" — the candidate is over-qualified. Use the unprefixed role title.
    Never copy the static tagline from the candidate's existing CV — it almost always misaligns. Always recalculate per JD.
 
-2. PROFILE FIRST SENTENCE: lead with the JD's role identity (matching whatever seniority you put in the headline) plus the candidate's years of experience in that specific lane. Generic openers work, but JD-anchored openers work better.
+2. CURRENT EMPLOYER TITLE (Kuehne+Nagel only): the experience-block title for K+N must mirror the headline's role identity. Headline-and-K+N consistency matters more than perfect verbatim copying of any single source variant — the variants disagree among themselves anyway ("AI Engineer", "Analyst Programmer (Full Stack)", "Software Engineer"). Examples:
+     headline = "Senior Software Engineer | Java, Cloud-Native & Microservices"
+       → K+N title = "Senior Software Engineer", subtitle = "Travel & Expense Platform"
+     headline = "AI Engineer | GenAI, RAG & Agentic Systems"
+       → K+N title = "AI Engineer", subtitle = "AI & Travel/Expense Platform"
+     headline = "Full-Stack Engineer | Angular, Java & TypeScript"
+       → K+N title = "Full-Stack Engineer", subtitle = "Travel & Expense Platform"
+   Subtitle should reflect the team/platform scope; pick the version from inventory that best fits the JD. NEVER let the K+N title clash with the headline.
+
+3. PROFILE FIRST SENTENCE: lead with the JD's role identity (matching whatever seniority you put in the headline) plus the candidate's years of experience in that specific lane. Generic openers work, but JD-anchored openers work better.
    Example: for a "Senior Software Engineer with Java leadership" JD, open with:
      "Senior software engineer with 6+ years architecting and delivering Java microservices in regulated Tier 1 banking environments..."
    Not:
      "Software engineer with 6+ years of production backend and full-stack experience focused on shipping GenAI features..."
    When the JD emphasises leadership / architecture ownership / mentoring, the FIRST sentence should claim those (the candidate has mentoring evidence and architecture decisions in the inventory) — don't bury them at the end.
 
-3. CORE_SKILLS ORDER: count which skill categories the JD emphasizes most (mentions of cloud / databases / messaging / observability / security / frontend / AI / etc.) and put the JD's TOP-MENTIONED categories FIRST. Within each row, lead with the JD's highest-priority items.
+4. CORE_SKILLS ORDER: count which skill categories the JD emphasizes most (mentions of cloud / databases / messaging / observability / security / frontend / AI / etc.) and put the JD's TOP-MENTIONED categories FIRST. Within each row, lead with the JD's highest-priority items.
    Example: BigSpark JD lists AWS first (Lambda, ECS, EKS, RDS, DynamoDB, SQS/SNS), then Kubernetes/Terraform/Helm. Cloud line should read "AWS (Lambda, ECS, EKS, ...), Kubernetes, Terraform, Azure, GCP, Docker" — not "Azure, AWS, GCP, Kubernetes, Docker".
    For a JD that doesn't mention AI, the AI/ML skills row should be LAST or omitted entirely (one-page roles) — it crowds out scannable JD-relevant skills.
 
-4. SKILL ROWS THE JD DOESN'T CARE ABOUT: drop them entirely if they push a JD-relevant row out of the visible page. A pure backend Java JD doesn't need a "GenAI & LLM Orchestration" row.
+5. SKILL ROWS THE JD DOESN'T CARE ABOUT: drop them entirely if they push a JD-relevant row out of the visible page. A pure backend Java JD doesn't need a "GenAI & LLM Orchestration" row.
 
 ANTI-PATTERNS to avoid (these depress scores):
 - Preserving generic placeholder bullets ("championed engineering practices", "translated AI capability for stakeholders") when a JD-specific replacement is available in the inventory. Replace them.
