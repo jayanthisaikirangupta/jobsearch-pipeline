@@ -100,16 +100,23 @@ def tailor_run(top: int, offset: int, no_export: bool) -> None:
               help="Skip this many top ranks before reviewing (e.g. --offset 10 --top 15 = ranks 11-25).")
 @click.option("--job-id", "job_ids", multiple=True,
               help="Review specific jobs by id. Pass multiple times or comma-separate. Overrides --top/--offset.")
-def tailor_review(top: int, offset: int, job_ids: tuple[str, ...]) -> None:
+@click.option("--include-done", is_flag=True, default=False,
+              help="Re-review rows already past the engagement gate "
+                   "(applied/interview/offer/rejected/withdrawn/expired). "
+                   "Off by default to save Bedrock tokens.")
+def tailor_review(top: int, offset: int, job_ids: tuple[str, ...],
+                  include_done: bool) -> None:
     from .tailor import review_runner
     if job_ids:
         # Allow comma-separated values too: --job-id "abc,def" or --job-id abc --job-id def
+        # Explicit-id review never auto-skips done rows — the user named them.
         flat: list[str] = []
         for item in job_ids:
             flat.extend(p.strip() for p in item.split(",") if p.strip())
         review_runner.review_ids(flat)
     else:
-        review_runner.review_top(top_n=top, offset=offset)
+        review_runner.review_top(top_n=top, offset=offset,
+                                 include_done=include_done)
 
 
 # ----- tracker ---------------------------------------------------------------

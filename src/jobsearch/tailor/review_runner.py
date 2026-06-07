@@ -14,6 +14,13 @@ from . import reviewer
 console = Console()
 
 
+# Statuses that mean "I'm done with this row" — skipped from review by
+# default to avoid wasting Bedrock tokens on rows you've already decided
+# about. Override with include_done=True (CLI: --include-done).
+_DONE_STATUSES = frozenset({"withdrawn", "expired", "rejected", "applied",
+                            "interview", "offer"})
+
+
 def _load_scored() -> pd.DataFrame:
     settings = get_settings()
     src = settings.data_dir / "jobs_scored.parquet"
@@ -22,16 +29,21 @@ def _load_scored() -> pd.DataFrame:
     return pd.read_parquet(src)
 
 
-def review_top(top_n: int = 10, offset: int = 0) -> list[dict]:
+def review_top(top_n: int = 10, offset: int = 0,
+               include_done: bool = False) -> list[dict]:
     """Review a slice of jobs by their score-rank in jobs_scored.parquet.
 
     Ranking source is the SAME parquet ``tailor run`` uses, so a fresh
     ``tailor run --offset N --top M`` followed by ``tailor review --offset N
-    --top M`` reviews exactly the rows you just tailored. Rows whose
-    tailored resume is missing on disk are skipped with a yellow warning.
+    --top M`` reviews exactly the rows you just tailored.
 
     offset=0,  top_n=10 -> ranks 1-10
     offset=10, top_n=15 -> ranks 11-25
+
+    By default rows already past the engagement gate
+    (withdrawn / expired / rejected / applied / interview / offer) are
+    skipped to save Bedrock tokens. Pass ``include_done=True`` to force
+    re-review (e.g. after a major tailor-prompt change).
     """
     scored = _load_scored()
     slice_df = scored.iloc[offset : offset + top_n]
@@ -42,15 +54,21 @@ def review_top(top_n: int = 10, offset: int = 0) -> list[dict]:
         )
         return []
 
-    # Look up the tracker row for each scored id; keep only ones that have a
-    # tailored resume on file. We don't filter by status (so even rows that
-    # have moved to 'applied' or 'interview' still review cleanly).
     apps: list[dict] = []
+    skipped_done = 0
     for job_id in slice_df["id"].tolist():
         rec = db.get(str(job_id))
         if not rec:
             console.print(
                 f"[yellow]Skipping {job_id}: not in tracker (run `tailor run` first).[/]"
+            )
+            continue
+        status = (rec.get("status") or "").lower()
+        if (not include_done) and status in _DONE_STATUSES:
+            skipped_done += 1
+            console.print(
+                f"[dim]Skipping {job_id}: status={status} "
+                f"(use --include-done to re-review).[/]"
             )
             continue
         if not rec.get("resume_path"):
@@ -59,14 +77,18 @@ def review_top(top_n: int = 10, offset: int = 0) -> list[dict]:
         apps.append(rec)
 
     if not apps:
-        console.print(
-            "[yellow]No reviewable rows in this slice. Did you `tailor run` over the same range?[/]"
-        )
+        msg = "No reviewable rows in this slice."
+        if skipped_done:
+            msg += f" ({skipped_done} done, hidden by default; --include-done to override.)"
+        else:
+            msg += " Did you `tailor run` over the same range?"
+        console.print(f"[yellow]{msg}[/]")
         return []
 
+    extra = f", {skipped_done} done-status hidden" if skipped_done else ""
     console.print(
         f"[dim]Reviewing ranks {offset + 1}-{offset + len(slice_df)} "
-        f"of {len(scored)} ({len(apps)} have tailored resumes).[/]"
+        f"of {len(scored)} ({len(apps)} reviewable{extra}).[/]"
     )
     return _review_each(apps, scored)
 
