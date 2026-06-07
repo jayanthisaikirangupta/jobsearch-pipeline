@@ -202,9 +202,21 @@ ONE_PAGE = {
     "header_pt": 10.5, "body_pt": 10, "bullet_pt": 10,
     "margins": (0.5, 0.5, 0.4, 0.4),
     "usable_width": 7.5,
-    "line_spacing": None,  # Word default = single
-    "max_profile_chars": 480,
-    "max_core_skill_rows": 6,
+    # Avaloq target: TRUE single line spacing (1.0). Earlier this was None
+    # which Word renders as Multiple ~1.15 — about 3-4 lines of wasted space
+    # over a full page. Setting 1.0 explicitly tightens it to match Avaloq.
+    "line_spacing": 1.0,
+    # Bullet rows go through a separate path (List Bullet style + spacing
+    # helper). Keep them at 1.0 too.
+    "bullet_line_spacing": 1.0,
+    # ls=1.0 frees ~2 lines vs ls=1.15 in practice (skill rows wrap, eating
+    # much of the budget). Conservative content bumps that empirically still
+    # fit on 1 page with realistic Claude output:
+    # - profile slightly longer (+1 sentence, ~480 chars)
+    # - bullets per role unchanged (4)
+    # - one extra core_skills row
+    "max_profile_chars": 480,         # was 380
+    "max_core_skill_rows": 7,         # was 6
     "max_bullets_per_role": 4,
     # Claude is asked to write <=160 chars; this 200 cap is the safety net for
     # the rare case it overshoots. Keep it loose so we never cut mid-sentence.
@@ -489,8 +501,17 @@ def _section_header(doc: Document, title: str, *, font: str, size: float,
 
 def _bullet(doc: Document, text: str, *, font: str, size: float,
             line: float | None = None) -> None:
+    """Render a List-Bullet paragraph with explicit line spacing.
+
+    line=None (default) means "use the 1-page tight default of 1.0".
+    The 2-page layout passes line=1.1 explicitly. Setting an explicit value
+    overrides the List Bullet style's built-in spacing (which is otherwise
+    Multiple ~1.15 — visibly looser than Avaloq).
+    """
     p = doc.add_paragraph(style="List Bullet")
-    _spacing(p, before=0, after=0.5 if line is None else 3, line=line)
+    effective_line = 1.0 if line is None else line
+    after_pt = 0.5 if line is None else 3
+    _spacing(p, before=0, after=after_pt, line=effective_line)
     p.paragraph_format.left_indent = Inches(0.2)
     p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
     for r in p.runs:

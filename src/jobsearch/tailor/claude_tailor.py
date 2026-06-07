@@ -132,10 +132,10 @@ Pick ONE based on the role:
 
 LENGTH BUDGETS — these are MAX values per format. The renderer truncates anything beyond them.
 
-ONE-PAGE budget:
-- profile: 3 sentences, <= 380 chars
-- core_skills: <= 6 rows, each row's items <= 160 chars
-- experience: <= 3 roles, <= 4 bullets per role, each bullet a COMPLETE sentence ending with a period, <= 18 words and <= 160 chars including the period. If you can't say it cleanly in 18 words, drop a less-important detail and keep the sentence whole.
+ONE-PAGE budget (Avaloq layout, single line spacing 1.0 — Cambria 10pt):
+- profile: 3-4 sentences, <= 480 chars (ls=1.0 gives more room than the old design — use the extra space, don't under-fill)
+- core_skills: <= 7 rows, each row's items <= 140 chars (keep rows tight; 2-line wrap eats vertical budget fast)
+- experience: <= 3 roles, 4 bullets per role. Each bullet a COMPLETE sentence ending with a period, <= 18 words and <= 160 chars including the period. If you can't say it cleanly in 18 words, drop a less-important detail and keep the sentence whole.
 - projects: <= 2 projects, summary 1 complete sentence ending with a period (<= 120 chars)
 - education: <= 2 entries, no modules
 - certifications: 1 line
