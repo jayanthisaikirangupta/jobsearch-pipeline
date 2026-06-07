@@ -188,13 +188,27 @@ Return JSON only.
 """
 
 
-def tailor(resume_text: str, job_title: str, company: str, jd: str) -> dict[str, Any]:
+def tailor(resume_text: str, job_title: str, company: str, jd: str,
+           *, extra_context: str = "") -> dict[str, Any]:
+    """Tailor a CV to a JD via Bedrock Claude.
+
+    extra_context (optional): per-call notes appended to the inventory.
+    Use for legitimate just-in-time additions the user has confirmed to
+    you (e.g. "Sai builds Grafana dashboards at K+N, status was missing
+    from old resumes"). Treated as additional grounded inventory, NOT
+    a fabrication licence.
+    """
     settings = get_settings()
     client = AnthropicBedrock(aws_region=settings.aws_region)
 
     # Inventory is identical across all jobs in a run (same .docx files), so
     # the cache_control on this block hits 100% after the first call.
     inv = _inventory.build_inventory()
+    if extra_context:
+        inv += (
+            "\n\n=== ADDITIONAL CONFIRMED EXPERIENCE (per-call, not in resume files) ===\n"
+            + extra_context.strip()
+        )
 
     user_content: list[dict[str, Any]] = [
         {
