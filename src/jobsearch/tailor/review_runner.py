@@ -30,22 +30,46 @@ def _load_scored() -> pd.DataFrame:
 
 
 def review_top(top_n: int = 10, offset: int = 0,
-               include_done: bool = False) -> list[dict]:
+               include_done: bool = False,
+               target: int | None = None) -> list[dict]:
     """Review a slice of jobs by their score-rank in jobs_scored.parquet.
 
     Ranking source is the SAME parquet ``tailor run`` uses, so a fresh
     ``tailor run --offset N --top M`` followed by ``tailor review --offset N
     --top M`` reviews exactly the rows you just tailored.
 
-    offset=0,  top_n=10 -> ranks 1-10
-    offset=10, top_n=15 -> ranks 11-25
+    Two modes (mutually exclusive — ``target`` wins if both passed):
 
-    By default rows already past the engagement gate
-    (withdrawn / expired / rejected / applied / interview / offer) are
-    skipped to save Bedrock tokens. Pass ``include_done=True`` to force
-    re-review (e.g. after a major tailor-prompt change).
+    1. Positional slice (``top_n``). Default. Reviews the first ``top_n``
+       ranks starting at ``offset``. Done rows in that slice are auto-
+       skipped but the slice does NOT extend past ``offset + top_n``. So
+       --top 25 with 4 done rows reviews 21 — not 25.
+
+    2. Auto-fill (``target``). Walks the parquet from ``offset`` onwards
+       and reviews until ``target`` actual reviews complete (or end of
+       parquet). Done rows and missing-resume rows are silently skipped
+       from the count. Use this when you want "my next N actionable
+       reviews" regardless of how many rows have already been touched.
+
+    By default done-status rows (withdrawn/expired/rejected/applied/
+    interview/offer) are skipped to save Bedrock tokens. Pass
+    ``include_done=True`` to force re-review.
     """
     scored = _load_scored()
+    if scored.empty:
+        console.print("[yellow]No scored jobs.[/]")
+        return []
+
+    if target is not None and target > 0:
+        # Auto-fill mode
+        candidate_df = scored.iloc[offset:]
+        return _review_collected(
+            candidate_df, scored,
+            limit=target, include_done=include_done,
+            mode_label=f"target={target} (auto-advance from rank {offset + 1})",
+        )
+
+    # Positional-slice mode (legacy / current default)
     slice_df = scored.iloc[offset : offset + top_n]
     if slice_df.empty:
         console.print(
@@ -53,42 +77,72 @@ def review_top(top_n: int = 10, offset: int = 0,
             f"(scored has {len(scored)} rows).[/]"
         )
         return []
+    return _review_collected(
+        slice_df, scored,
+        limit=None, include_done=include_done,
+        mode_label=f"ranks {offset + 1}-{offset + len(slice_df)}",
+    )
 
+
+def _review_collected(candidate_df: "pd.DataFrame", scored: "pd.DataFrame", *,
+                      limit: int | None,
+                      include_done: bool,
+                      mode_label: str) -> list[dict]:
+    """Walk candidate_df in order. Collect tracker records that are
+    reviewable (have a resume + not done by default). If ``limit`` is set,
+    stop after that many. If None, walk the whole frame."""
     apps: list[dict] = []
     skipped_done = 0
-    for job_id in slice_df["id"].tolist():
+    skipped_no_resume = 0
+    skipped_untracked = 0
+    walked = 0
+
+    for job_id in candidate_df["id"].tolist():
+        if limit is not None and len(apps) >= limit:
+            break
+        walked += 1
         rec = db.get(str(job_id))
         if not rec:
-            console.print(
-                f"[yellow]Skipping {job_id}: not in tracker (run `tailor run` first).[/]"
-            )
+            skipped_untracked += 1
+            if limit is None:
+                console.print(
+                    f"[yellow]Skipping {job_id}: not in tracker (run `tailor run` first).[/]"
+                )
             continue
         status = (rec.get("status") or "").lower()
         if (not include_done) and status in _DONE_STATUSES:
             skipped_done += 1
-            console.print(
-                f"[dim]Skipping {job_id}: status={status} "
-                f"(use --include-done to re-review).[/]"
-            )
+            if limit is None:
+                console.print(
+                    f"[dim]Skipping {job_id}: status={status} "
+                    f"(use --include-done to re-review).[/]"
+                )
             continue
         if not rec.get("resume_path"):
-            console.print(f"[yellow]Skipping {job_id}: no resume_path on tracker row.[/]")
+            skipped_no_resume += 1
+            if limit is None:
+                console.print(
+                    f"[yellow]Skipping {job_id}: no resume_path on tracker row.[/]"
+                )
             continue
         apps.append(rec)
 
     if not apps:
-        msg = "No reviewable rows in this slice."
-        if skipped_done:
-            msg += f" ({skipped_done} done, hidden by default; --include-done to override.)"
-        else:
-            msg += " Did you `tailor run` over the same range?"
-        console.print(f"[yellow]{msg}[/]")
+        bits = []
+        if skipped_done: bits.append(f"{skipped_done} done")
+        if skipped_no_resume: bits.append(f"{skipped_no_resume} no-resume")
+        if skipped_untracked: bits.append(f"{skipped_untracked} untracked")
+        detail = " (" + ", ".join(bits) + ")" if bits else ""
+        console.print(f"[yellow]No reviewable rows in {mode_label}{detail}.[/]")
         return []
 
-    extra = f", {skipped_done} done-status hidden" if skipped_done else ""
+    extras: list[str] = []
+    if skipped_done: extras.append(f"{skipped_done} done")
+    if skipped_no_resume: extras.append(f"{skipped_no_resume} no-resume")
+    if skipped_untracked: extras.append(f"{skipped_untracked} untracked")
+    extra_str = " (" + ", ".join(extras) + " skipped)" if extras else ""
     console.print(
-        f"[dim]Reviewing ranks {offset + 1}-{offset + len(slice_df)} "
-        f"of {len(scored)} ({len(apps)} reviewable{extra}).[/]"
+        f"[dim]Reviewing {len(apps)} of {walked} walked in {mode_label}{extra_str}.[/]"
     )
     return _review_each(apps, scored)
 

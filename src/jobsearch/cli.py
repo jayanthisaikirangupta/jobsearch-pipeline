@@ -95,20 +95,24 @@ def tailor_run(top: int, offset: int, no_export: bool) -> None:
 
 @tailor.command("review")
 @click.option("--top", type=int, default=10, show_default=True,
-              help="How many tailored applications to review.")
+              help="Positional slice: review the first N ranks from --offset, "
+                   "skipping done rows but NOT advancing past the slice end.")
+@click.option("--target", type=int, default=None,
+              help="Auto-fill: keep advancing until N actual reviews complete. "
+                   "Skips done/untracked rows from the count. Mutually exclusive "
+                   "with --top (target wins if both passed).")
 @click.option("--offset", type=int, default=0, show_default=True,
-              help="Skip this many top ranks before reviewing (e.g. --offset 10 --top 15 = ranks 11-25).")
+              help="Skip this many top ranks before starting (e.g. --offset 10 --top 15 = ranks 11-25).")
 @click.option("--job-id", "job_ids", multiple=True,
-              help="Review specific jobs by id. Pass multiple times or comma-separate. Overrides --top/--offset.")
+              help="Review specific jobs by id. Pass multiple times or comma-separate. Overrides --top/--offset/--target.")
 @click.option("--include-done", is_flag=True, default=False,
               help="Re-review rows already past the engagement gate "
                    "(applied/interview/offer/rejected/withdrawn/expired). "
                    "Off by default to save Bedrock tokens.")
-def tailor_review(top: int, offset: int, job_ids: tuple[str, ...],
-                  include_done: bool) -> None:
+def tailor_review(top: int, target: int | None, offset: int,
+                  job_ids: tuple[str, ...], include_done: bool) -> None:
     from .tailor import review_runner
     if job_ids:
-        # Allow comma-separated values too: --job-id "abc,def" or --job-id abc --job-id def
         # Explicit-id review never auto-skips done rows — the user named them.
         flat: list[str] = []
         for item in job_ids:
@@ -116,7 +120,8 @@ def tailor_review(top: int, offset: int, job_ids: tuple[str, ...],
         review_runner.review_ids(flat)
     else:
         review_runner.review_top(top_n=top, offset=offset,
-                                 include_done=include_done)
+                                 include_done=include_done,
+                                 target=target)
 
 
 # ----- tracker ---------------------------------------------------------------
