@@ -1,0 +1,29 @@
+{# Auto-extraction failed — render an inline form so the user can fill in
+   the four required fields and re-submit. POSTs to /add-url/manual which
+   feeds the same orchestrator with manual_overrides. The form replaces
+   the #task-status div (same target as the auto path's pending banner). #}
+<div id="task-status" class="task-banner task-banner-error">
+  <strong>Couldn't auto-fetch this URL</strong>
+  <div class="muted" style="margin-top: 4px;">{{ error }}</div>
+  <form hx-post="/add-url/manual"
+        hx-target="#task-status"
+        hx-swap="outerHTML"
+        style="margin-top: 12px; display: grid; grid-template-columns: 1fr 1fr; gap: 8px;">
+    <input type="hidden" name="url" value="{{ url }}" />
+    <input type="text" name="title" placeholder="Job title (required)" required />
+    <input type="text" name="company" placeholder="Company (required)" required />
+    <input type="text" name="location" placeholder="Location (optional)"
+           style="grid-column: span 2;" />
+    <textarea name="description" placeholder="Paste the job description (required)"
+              required rows="8"
+              style="grid-column: span 2; font-family: inherit; padding: 6px 8px;
+                     border: 1px solid var(--border); border-radius: 4px;"></textarea>
+    <div class="task-actions" style="grid-column: span 2; display: flex; gap: 8px;">
+      <button type="submit">Add this job</button>
+      <button type="button"
+              onclick="document.getElementById('task-status').outerHTML='&lt;div id=&quot;task-status&quot;&gt;&lt;/div&gt;'">
+        cancel
+      </button>
+    </div>
+  </form>
+</div>

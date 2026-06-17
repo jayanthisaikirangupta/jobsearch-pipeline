@@ -226,6 +226,64 @@ def review_start(request: Request, job_id: str) -> HTMLResponse:
     return _pending_response(request, task_id, "review", job_id)
 
 
+# --- Add by URL -----------------------------------------------------------
+
+def _add_url_job(url: str, manual_overrides: dict | None) -> dict:
+    """Worker function — runs in a thread."""
+    from ..pipeline import single_url
+    result = single_url.add(
+        url,
+        tailor=True,
+        review=True,
+        manual_overrides=manual_overrides,
+    )
+    # Return a small JSON-ish dict; the dashboard only needs the job_id to
+    # know which row to highlight.
+    return {"job_id": result.job_id, "notes": result.notes}
+
+
+@app.post("/add-url", response_class=HTMLResponse)
+def add_url_start(request: Request, url: str = Form(...)) -> HTMLResponse:
+    """Auto-extract + score + tailor + review for a single URL.
+    Falls back to a manual entry form if extraction fails."""
+    from ..ingest import url as url_extract
+    url = url.strip()
+    if not url:
+        raise HTTPException(400, "URL is required")
+    # Pre-flight extract so failures hit the user immediately (no spinner
+    # for 60s only to fail). The driver will re-extract — that's fine, it's
+    # a single HTTP call.
+    try:
+        url_extract.extract(url)
+    except url_extract.URLExtractionError as e:
+        return templates.TemplateResponse(
+            "_add_url_manual.html",
+            {"request": request, "url": url, "error": str(e)},
+        )
+    task_id = tasks.start("add-url", url, _add_url_job, url, None)
+    return _pending_response(request, task_id, "add-url", url)
+
+
+@app.post("/add-url/manual", response_class=HTMLResponse)
+def add_url_manual(request: Request,
+                   url: str = Form(...),
+                   title: str = Form(...),
+                   company: str = Form(...),
+                   location: str = Form(""),
+                   description: str = Form(...)) -> HTMLResponse:
+    """Manual entry path when auto-extract failed."""
+    if not (title.strip() and company.strip() and description.strip()):
+        raise HTTPException(400, "title, company, and description are required")
+    overrides = {
+        "title": title.strip(),
+        "company": company.strip(),
+        "location": location.strip(),
+        "description": description.strip(),
+    }
+    task_id = tasks.start("add-url", url, _add_url_job, url, overrides)
+    return _pending_response(request, task_id, "add-url", url)
+
+
 # --- Ask (answer generator) -----------------------------------------------
 
 def _answer_job(job_id: str, question: str, tone: str,

@@ -37,7 +37,8 @@
       <td>
         <div class="actions">
           {% if r.url %}
-            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener">↗</a>
+            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener"
+               onclick="return openInBackground(event, this.href)">↗</a>
           {% endif %}
           {% if r.resume_path %}
             <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄</a>

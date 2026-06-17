@@ -93,6 +93,74 @@ def tailor_run(top: int, offset: int, no_export: bool) -> None:
         excel.export_quietly()
 
 
+@tailor.command("add-url")
+@click.argument("url")
+@click.option("--no-tailor", is_flag=True,
+              help="Add + score the URL but don't tailor a resume.")
+@click.option("--no-review", is_flag=True,
+              help="Tailor but skip the JD-aware reviewer pass.")
+@click.option("--manual", is_flag=True,
+              help="Skip auto-extraction; prompt for title/company/location/JD.")
+def tailor_add_url(url: str, no_tailor: bool, no_review: bool,
+                   manual: bool) -> None:
+    """Pull one ad-hoc job URL through the full pipeline (score+tailor+review).
+
+    Auto-detects Lever and Greenhouse URLs and uses their public APIs;
+    otherwise falls back to JSON-LD JobPosting on the page. If extraction
+    fails (or --manual is passed) you'll be prompted for the fields.
+    """
+    from .ingest import url as url_extract
+    from .pipeline import single_url
+
+    overrides: dict[str, str] | None = None
+    if manual:
+        overrides = _prompt_manual()
+    else:
+        # Try auto-extract once up front so a failure prompts the user
+        # before any expensive work happens.
+        try:
+            url_extract.extract(url)
+        except url_extract.URLExtractionError as e:
+            console.print(f"[yellow]Auto-extract failed: {e}[/]")
+            console.print("[dim]Falling back to manual entry.[/]")
+            overrides = _prompt_manual()
+
+    try:
+        single_url.add(
+            url,
+            tailor=not no_tailor,
+            review=not no_review,
+            manual_overrides=overrides,
+        )
+    except Exception as e:  # noqa: BLE001
+        raise click.ClickException(str(e)) from e
+
+
+def _prompt_manual() -> dict[str, str]:
+    """Prompt the user for the four fields the manual path needs."""
+    title = click.prompt("Job title", type=str).strip()
+    company = click.prompt("Company", type=str).strip()
+    location = click.prompt("Location (optional)", type=str, default="",
+                            show_default=False).strip()
+    console.print("[dim]Paste the job description, then end with a blank line "
+                  "+ Ctrl-D (Unix) or Ctrl-Z+Enter (Windows):[/]")
+    description = click.get_text_stream("stdin").read().strip()
+    if not description:
+        # Stdin empty (likely a real TTY without a heredoc); open $EDITOR
+        edited = click.edit("\n# Paste the job description above this line, save and exit.\n")
+        description = (edited or "").split(
+            "# Paste the job description above this line, save and exit."
+        )[0].strip()
+    if not (title and company and description):
+        raise click.ClickException("title, company, and description are required")
+    return {
+        "title": title,
+        "company": company,
+        "location": location,
+        "description": description,
+    }
+
+
 @tailor.command("review")
 @click.option("--top", type=int, default=10, show_default=True,
               help="Positional slice: review the first N ranks from --offset, "

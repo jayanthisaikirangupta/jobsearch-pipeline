@@ -49,7 +49,8 @@
         {% endif %}
         <div class="actions">
           {% if r.url %}
-            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener">↗ JD</a>
+            <a class="icon-btn" href="{{ r.url }}" target="_blank" rel="noopener"
+               onclick="return openInBackground(event, this.href)">↗ JD</a>
           {% endif %}
           {% if r.has_resume %}
             <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄 CV</a>

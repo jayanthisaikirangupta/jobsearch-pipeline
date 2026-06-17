@@ -214,6 +214,34 @@ def _score_sponsor(score: float | int | None) -> int:
     return 0
 
 
+def score_row(row, profile) -> dict:
+    """Score a single row (Mapping-like with .get) and return the column
+    additions. Used by both the batch scorer below and the single-URL
+    driver in pipeline/single_url.py — keep them sharing one impl."""
+    annual = _annual_gbp(row.get("min_amount"), row.get("max_amount"), row.get("interval"))
+    bd = ScoreBreakdown(
+        salary=_score_salary(annual, profile.salary_floor_gbp, profile.salary_target_gbp),
+        soc_eligibility=_score_soc(row.get("title", ""), profile.target_socs),
+        skills_overlap=_score_skills(
+            row.get("description", ""), profile.skills_must_have, profile.skills_nice_to_have
+        ),
+        location=_score_location(row.get("location", ""), profile.target_locations),
+        sponsor_signal=_score_sponsor(row.get("sponsor_score")),
+        tier_match=_score_tier(row.get("title", "")),
+    )
+    return {
+        "score_total": bd.total,
+        "grade": bd.grade,
+        "score_salary": bd.salary,
+        "score_soc": bd.soc_eligibility,
+        "score_skills": bd.skills_overlap,
+        "score_location": bd.location,
+        "score_sponsor_signal": bd.sponsor_signal,
+        "score_tier_match": bd.tier_match,
+        "annual_gbp": annual,
+    }
+
+
 def score_jobs() -> Path:
     settings = get_settings()
     profile = get_profile()
@@ -227,33 +255,7 @@ def score_jobs() -> Path:
         df.to_parquet(out, index=False)
         return out
 
-    rows: list[dict] = []
-    for _, r in df.iterrows():
-        annual = _annual_gbp(r.get("min_amount"), r.get("max_amount"), r.get("interval"))
-        bd = ScoreBreakdown(
-            salary=_score_salary(annual, profile.salary_floor_gbp, profile.salary_target_gbp),
-            soc_eligibility=_score_soc(r.get("title", ""), profile.target_socs),
-            skills_overlap=_score_skills(
-                r.get("description", ""), profile.skills_must_have, profile.skills_nice_to_have
-            ),
-            location=_score_location(r.get("location", ""), profile.target_locations),
-            sponsor_signal=_score_sponsor(r.get("sponsor_score")),
-            tier_match=_score_tier(r.get("title", "")),
-        )
-        rows.append(
-            {
-                "score_total": bd.total,
-                "grade": bd.grade,
-                "score_salary": bd.salary,
-                "score_soc": bd.soc_eligibility,
-                "score_skills": bd.skills_overlap,
-                "score_location": bd.location,
-                "score_sponsor_signal": bd.sponsor_signal,
-                "score_tier_match": bd.tier_match,
-                "annual_gbp": annual,
-            }
-        )
-
+    rows = [score_row(r, profile) for _, r in df.iterrows()]
     scored = df.assign(**pd.DataFrame(rows)).sort_values("score_total", ascending=False)
     # Drop avoid-companies (TCS etc)
     if profile.avoid_companies:

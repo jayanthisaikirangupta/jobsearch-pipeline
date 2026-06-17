@@ -4,6 +4,18 @@
   <meta charset="utf-8" />
   <title>Jobsearch Dashboard</title>
   <script src="https://unpkg.com/htmx.org@2.0.3"></script>
+  <script>
+    // Open a JD link in a new tab WITHOUT stealing focus, so the dashboard
+    // stays foregrounded and the user can immediately click "📄 CV" on the
+    // same row. window.open focuses the new tab by default on every modern
+    // browser; the blur/focus dance is the standard workaround.
+    function openInBackground(e, url) {
+      e.preventDefault();
+      var w = window.open(url, '_blank', 'noopener');
+      if (w) { try { w.blur(); } catch (_) {} window.focus(); }
+      return false;
+    }
+  </script>
   <style>
     :root {
       --navy: #1F3A5F;
@@ -68,6 +80,26 @@
       text-transform: uppercase;
     }
     .filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .add-url-bar {
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      padding: 8px 24px;
+    }
+    .add-url-bar form {
+      display: flex; gap: 8px; align-items: center;
+      max-width: 1800px; margin: 0 auto;
+    }
+    .add-url-bar input[type="url"] {
+      flex: 1;
+      padding: 6px 10px; font-size: 13px;
+      border: 1px solid var(--border); border-radius: 4px;
+    }
+    .add-url-bar button {
+      padding: 6px 14px; font-size: 13px; font-weight: 600;
+      background: var(--blue); color: white;
+      border: none; border-radius: 4px; cursor: pointer;
+    }
+    .add-url-bar button:hover { background: var(--navy); }
     .filters input, .filters select {
       padding: 4px 8px; font-size: 12px;
       border: 1px solid var(--border);
@@ -293,6 +325,19 @@
       <span><b>{{ stats.total_scored }}</b>scored</span>
     </div>
   </header>
+
+  <div class="add-url-bar">
+    <form hx-post="/add-url"
+          hx-target="#task-status"
+          hx-swap="outerHTML"
+          hx-on::after-request="if(event.detail.successful) this.reset()">
+      <input type="url" name="url"
+             placeholder="Paste a job URL (Lever / Greenhouse / any JobPosting page)…"
+             required />
+      <button type="submit">+ Add by URL</button>
+      <span class="muted">extracts → scores → tailors → reviews</span>
+    </form>
+  </div>
 
   <div id="task-status"></div>
   <div id="ask-modal-host"></div>
