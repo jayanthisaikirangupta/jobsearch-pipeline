@@ -188,6 +188,30 @@ def open_resume(job_id: str) -> Response:
     return Response(status_code=204)
 
 
+@app.get("/open-cover-letter/{job_id}", response_class=Response)
+def open_cover_letter(job_id: str) -> Response:
+    """Open the generated cover letter .docx if one exists on disk."""
+    from ..config import get_settings
+    rec = db.get(job_id)
+    company = (rec or {}).get("company", "") if rec else ""
+    if not company:
+        # Fall back to scored parquet
+        import pandas as pd
+        scored_p = get_settings().data_dir / "jobs_scored.parquet"
+        if scored_p.exists():
+            df = pd.read_parquet(scored_p)
+            match = df[df["id"] == job_id]
+            if not match.empty:
+                company = str(match.iloc[0].get("company", ""))
+    if not company:
+        return Response(status_code=404)
+    safe = "".join(c if c.isalnum() else "_" for c in company)[:40]
+    path = get_settings().output_dir / "CV" / f"{job_id}_{safe}_CoverLetter.docx"
+    if path.exists():
+        _open_in_browser_or_app(str(path))
+    return Response(status_code=204)
+
+
 # --- Tailor / Review (background tasks) -----------------------------------
 
 def _tailor_job(job_id: str, force: bool) -> str:
@@ -224,6 +248,25 @@ def review_start(request: Request, job_id: str) -> HTMLResponse:
         return _pending_response(request, existing.id, "review", job_id)
     task_id = tasks.start("review", job_id, _review_job, job_id)
     return _pending_response(request, task_id, "review", job_id)
+
+
+def _cover_letter_job(job_id: str, force: bool) -> str:
+    """Worker function — runs in a thread."""
+    from .. import cover_letter as cl_mod
+    out = cl_mod.generate_for_id(job_id, force=force)
+    return str(out) if out else ""
+
+
+@app.post("/cover-letter/{job_id}", response_class=HTMLResponse)
+def cover_letter_start(request: Request, job_id: str,
+                       force: bool = False) -> HTMLResponse:
+    """Generate a personalised cover letter using the tailored resume + JD.
+    Saves to output/CV/{job_id}_{Company}_CoverLetter.docx."""
+    existing = tasks.active_for(job_id, kind="cover-letter")
+    if existing:
+        return _pending_response(request, existing.id, "cover-letter", job_id)
+    task_id = tasks.start("cover-letter", job_id, _cover_letter_job, job_id, force)
+    return _pending_response(request, task_id, "cover-letter", job_id)
 
 
 # --- Add by URL -----------------------------------------------------------

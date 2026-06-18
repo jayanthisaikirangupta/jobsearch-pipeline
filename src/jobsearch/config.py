@@ -6,6 +6,7 @@ from functools import lru_cache
 from pathlib import Path
 
 import yaml
+from dotenv import load_dotenv
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -79,6 +80,10 @@ class Profile(BaseModel):
 
 @lru_cache(maxsize=1)
 def get_settings() -> Settings:
+    # Load .env into os.environ so sources that read raw env vars
+    # (Adzuna, etc.) see the keys. Pydantic only injects declared fields.
+    if _ENV_PATH.exists():
+        load_dotenv(_ENV_PATH, override=False)
     s = Settings()
     s.ensure_dirs()
     return s

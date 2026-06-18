@@ -1,156 +1,95 @@
-# Master query config. Tuned for Sai's profile (AI/GenAI + full-stack + regulated data)
-# and the visa goal: cast a wide-but-relevant net across England + Scotland tech hubs,
-# not just London.
+# Master query config. Adzuna-only, UK-wide.
+#
+# Free tier is 250 calls/day per app_id; each query below burns up to 3 calls
+# (3 pages * 50 results). With ~14 queries that's ~42 calls per ingest run,
+# well within budget.
+#
+# Location strategy: empty `where` -> Adzuna treats as nationwide UK. The
+# `gb` country code in the endpoint already pins it to the UK.
 #
 # Structure:
-#   1. Core AI/ML (5 queries × multiple sources) — your primary strength
-#   2. SWE / full-stack (3 queries) — your TCS-Lloyds + K+N backend depth
-#   3. Data engineering / platform (2 queries) — SOC 2133 fit
-#   4. Scotland-specific (4 queries) — Edinburgh / Glasgow regulated finance + tech
-#   5. England regional hubs (3 queries) — Cambridge / Manchester / Bristol
-#
-# Glassdoor disabled across the board — see prior commit; JobSpy's UK Glassdoor
-# scraper is consistently anti-bot-blocked. Re-enable per-query if it unbreaks.
+#   1. Core AI / GenAI — broadened: every common title variant
+#   2. SWE / full-stack — TCS-Lloyds + K+N backend depth
+#   3. Data engineering — SOC 2133 fit (Data Scientist + ML Engineer
+#      intentionally excluded per profile focus)
 
 defaults:
   country_indeed: UK
-  hours_old: 168          # 7 days
-  results_wanted: 50
+  hours_old: 96          # 4 days
+  results_wanted: 1000
   description_format: markdown
+  distance: 20            # ignored when `where` is empty (nationwide)
 
 queries:
-  # ===== 1. Core AI / ML / GenAI roles (UK-wide) =====
+  # ===== 1. Core AI / GenAI — cast wide on title variants =====
   - label: ai-engineer-uk
     search_term: "AI Engineer"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+    location: ""
+    sources: [adzuna]
 
-  - label: genai-llm-uk
-    search_term: "GenAI Engineer OR LLM Engineer OR Applied AI"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: genai-engineer-uk
+    search_term: "Generative AI Engineer"
+    location: ""
+    sources: [adzuna]
 
-  - label: ml-engineer-uk
-    search_term: "Machine Learning Engineer"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: llm-engineer-uk
+    search_term: "LLM Engineer"
+    location: ""
+    sources: [adzuna]
 
-  - label: solutions-engineer-uk
-    search_term: "Solutions Engineer AI OR Forward Deployed Engineer OR Applied AI Engineer"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: applied-ai-engineer-uk
+    search_term: "Applied AI Engineer"
+    location: ""
+    sources: [adzuna]
 
-  - label: ai-platform-uk
-    search_term: "MLOps Engineer OR ML Platform Engineer OR AI Platform"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: ai-developer-uk
+    search_term: "AI Developer"
+    location: ""
+    sources: [adzuna]
 
-  # ===== 2. Pathway A: Full-Stack / Java / Angular roles (5 yrs Sai's
-  #         strongest defensible experience). Mid-level tier on purpose —
-  #         the scorer down-weights principal/staff/director.
-  - label: java-spring-engineer-uk
-    search_term: "Java Spring Boot Engineer"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: ai-software-engineer-uk
+    search_term: "AI Software Engineer"
+    location: ""
+    sources: [adzuna]
 
-  - label: full-stack-java-angular-uk
-    search_term: "Full Stack Engineer Java Angular"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: prompt-engineer-uk
+    search_term: "Prompt Engineer"
+    location: ""
+    sources: [adzuna]
 
-  - label: angular-engineer-uk
-    search_term: "Angular Developer OR Frontend Engineer Angular"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+  - label: nlp-engineer-uk
+    search_term: "NLP Engineer"
+    location: ""
+    sources: [adzuna]
 
+  # ===== 2. SWE / full-stack =====
   - label: software-engineer-uk
-    search_term: "Software Engineer Python OR Java"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
+    search_term: "Software Engineer"
+    location: ""
+    sources: [adzuna]
 
-  # ===== 3. Data engineering / platform =====
+  - label: fullstack-engineer-uk
+    search_term: "Full Stack Engineer"
+    location: ""
+    sources: [adzuna]
+
+  - label: backend-engineer-uk
+    search_term: "Backend Engineer"
+    location: ""
+    sources: [adzuna]
+
+  - label: java-developer-uk
+    search_term: "Java Developer"
+    location: ""
+    sources: [adzuna]
+
+  - label: python-developer-uk
+    search_term: "Python Developer"
+    location: ""
+    sources: [adzuna]
+
+  # ===== 3. Data engineering =====
   - label: data-engineer-uk
     search_term: "Data Engineer"
-    location: "United Kingdom"
-    sources: [indeed, linkedin]
-
-  - label: senior-data-platform-uk
-    search_term: "Senior Data Engineer OR Data Platform Engineer"
-    location: "United Kingdom"
-    sources: [indeed]
-
-  # ===== 4. Scotland-specific (Edinburgh + Glasgow are real tech hubs:
-  #         FinTech via RBS/Lloyds presence, AI startups, FanDuel, etc.) =====
-  - label: ai-engineer-edinburgh
-    search_term: "AI Engineer OR Machine Learning Engineer"
-    location: "Scotland"
-    sources: [indeed, linkedin]
-
-  - label: swe-edinburgh
-    search_term: "Senior Software Engineer Python OR Java"
-    location: "Scotland"
-    sources: [indeed, linkedin]
-
-  - label: ai-engineer-glasgow
-    search_term: "AI Engineer OR Software Engineer"
-    location: "Scotland"
-    sources: [indeed]
-
-  - label: data-engineer-scotland
-    search_term: "Data Engineer"
-    location: "Scotland"
-    sources: [indeed, linkedin]
-
-  # ===== 5. England regional hubs (avoid London-only blindspot) =====
-  - label: ai-cambridge
-    search_term: "AI Engineer OR Machine Learning Engineer"
-    location: "Cambridge, England"
-    sources: [indeed, linkedin]
-
-  - label: tech-manchester
-    search_term: "Senior Software Engineer OR AI Engineer OR Data Engineer"
-    location: "Manchester, England"
-    sources: [indeed, linkedin]
-
-  - label: tech-bristol
-    search_term: "Software Engineer OR AI Engineer"
-    location: "Bristol, England"
-    sources: [indeed]
-
-  # ===== 6. Sai's home patch (Milton Keynes commute) =====
-  - label: tech-milton-keynes
-    search_term: "Software Engineer OR AI Engineer OR Data Engineer"
-    location: "Milton Keynes, England"
-    sources: [indeed, linkedin]
-
-  # ===== 7. Direct ATS sources (Greenhouse + Lever) =====
-  # These hit company career pages directly via public APIs. Token list
-  # in config/sponsor_tokens.yaml. 100% sponsor-licensed since we hand-pick
-  # the companies. No anti-bot risk, no token costs.
-  - label: ats-engineer-uk
-    search_term: "Engineer"
-    location: "United Kingdom"
-    sources: [greenhouse, lever]
-
-  - label: ats-ai-uk
-    search_term: "AI OR Machine Learning OR LLM OR Data"
-    location: "United Kingdom"
-    sources: [greenhouse, lever]
-
-  # ===== 8. Adzuna (covers companies not on Greenhouse/Lever) =====
-  # Free tier needs ADZUNA_APP_ID + ADZUNA_APP_KEY in .env (sign up at
-  # developer.adzuna.com). Without those the source quietly returns 0.
-  - label: adzuna-ai-uk
-    search_term: "AI Engineer"
-    location: "United Kingdom"
-    sources: [adzuna]
-
-  - label: adzuna-data-engineer-uk
-    search_term: "Senior Data Engineer"
-    location: "United Kingdom"
-    sources: [adzuna]
-
-  - label: adzuna-swe-uk
-    search_term: "Senior Software Engineer Python OR Java"
-    location: "United Kingdom"
+    location: ""
     sources: [adzuna]

@@ -54,6 +54,7 @@ class QueueRow:
     reviewer_verdict: str
     resume_path: str
     review_md_path: str  # derived from resume_path
+    cover_letter_path: str = ""  # derived: output/CV/{job_id}_{Company}_CoverLetter.docx
 
     @property
     def has_review(self) -> bool:
@@ -62,6 +63,10 @@ class QueueRow:
     @property
     def has_resume(self) -> bool:
         return bool(self.resume_path)
+
+    @property
+    def has_cover_letter(self) -> bool:
+        return bool(self.cover_letter_path)
 
 
 @dataclass
@@ -125,11 +130,24 @@ def _row_from(scored_row: pd.Series, tracker_rec: dict[str, Any] | None) -> Queu
         except (ValueError, TypeError):
             return None
 
+    # Cover letter — derive expected path; only set if file actually exists.
+    cl_path = ""
+    job_id = str(scored_row["id"])
+    company = str(scored_row.get("company", "") or "")
+    if company:
+        from pathlib import Path
+        safe = "".join(c if c.isalnum() else "_" for c in company)[:40]
+        candidate = (
+            get_settings().output_dir / "CV" / f"{job_id}_{safe}_CoverLetter.docx"
+        )
+        if candidate.exists():
+            cl_path = str(candidate)
+
     return QueueRow(
-        job_id=str(scored_row["id"]),
+        job_id=job_id,
         grade=str(scored_row.get("grade", "") or ""),
         score_total=int(scored_row.get("score_total", 0) or 0),
-        company=str(scored_row.get("company", "") or ""),
+        company=company,
         title=str(scored_row.get("title", "") or ""),
         location=str(scored_row.get("location", "") or ""),
         url=str(scored_row.get("url", "") or ""),
@@ -142,6 +160,7 @@ def _row_from(scored_row: pd.Series, tracker_rec: dict[str, Any] | None) -> Queu
         reviewer_verdict=str(rec.get("reviewer_verdict", "") or ""),
         resume_path=resume,
         review_md_path=review_md,
+        cover_letter_path=cl_path,
     )
 
 

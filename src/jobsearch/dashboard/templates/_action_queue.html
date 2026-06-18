@@ -56,6 +56,20 @@
             <a class="icon-btn" hx-get="/open-resume/{{ r.job_id }}" hx-swap="none">📄 CV</a>
           {% endif %}
 
+          {# Cover letter: only after a resume exists. Open if already
+             generated, otherwise kick off generation. #}
+          {% if r.has_resume %}
+            {% if r.has_cover_letter %}
+              <a class="icon-btn" hx-get="/open-cover-letter/{{ r.job_id }}"
+                 hx-swap="none">📨 CL</a>
+            {% else %}
+              <button class="icon-btn icon-btn-primary"
+                      hx-post="/cover-letter/{{ r.job_id }}"
+                      hx-target="#task-status"
+                      hx-swap="outerHTML">✉ Cover Letter</button>
+            {% endif %}
+          {% endif %}
+
           {# Ask: opens a modal that talks to the answer generator. Fine
              whether or not a resume exists yet — the answer module just
              grounds in the JD if no resume. #}
