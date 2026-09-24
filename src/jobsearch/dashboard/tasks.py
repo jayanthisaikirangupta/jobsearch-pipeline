@@ -30,13 +30,19 @@ from typing import Any, Callable
 @dataclass
 class Task:
     id: str
-    kind: str           # "tailor" | "review"
-    job_id: str
+    kind: str           # "tailor" | "review" | "bulk-tailor" | "bulk-review" | ...
+    job_id: str         # single id, or comma-joined list for bulk
     status: str = "running"  # running | done | error
     started_at: float = field(default_factory=time.monotonic)
     finished_at: float | None = None
     error: str = ""
     result: Any = None
+    # Bulk-task progress. None means "not a bulk task" — banner falls back
+    # to the single-job message.
+    progress: int | None = None
+    total: int | None = None
+    progress_label: str = ""  # e.g. current company being processed
+    errors: list[str] = field(default_factory=list)
 
 
 _LOCK = threading.RLock()
@@ -66,6 +72,48 @@ def start(kind: str, job_id: str, fn: Callable, *args, **kwargs) -> str:
             tb = traceback.format_exc().splitlines()
             if tb:
                 task.error += f"  ({tb[-1]})"
+
+    t = threading.Thread(target=_runner, daemon=True, name=f"jobsearch-{kind}-{task_id}")
+    t.start()
+    return task_id
+
+
+def start_bulk(kind: str, job_ids: list[str], fn: Callable,
+               label_fn: Callable[[str], str] | None = None) -> str:
+    """Spawn a worker thread that calls fn(job_id) for each id in sequence,
+    updating progress as it goes. Returns the task_id.
+
+    fn(job_id) may return anything; exceptions are caught per-row and appended
+    to task.errors so a single bad row doesn't abort the batch.
+    label_fn(job_id) -> str provides a human-readable label for the current
+    row (e.g. company name) to show in the polling banner.
+    """
+    task_id = uuid.uuid4().hex[:12]
+    task = Task(
+        id=task_id, kind=kind, job_id=",".join(job_ids),
+        progress=0, total=len(job_ids),
+    )
+    with _LOCK:
+        _TASKS[task_id] = task
+
+    def _runner() -> None:
+        results: list[Any] = []
+        for i, jid in enumerate(job_ids):
+            with _LOCK:
+                task.progress = i
+                task.progress_label = label_fn(jid) if label_fn else jid
+            try:
+                results.append(fn(jid))
+            except Exception as e:  # noqa: BLE001
+                msg = f"{jid}: {type(e).__name__}: {e}"
+                with _LOCK:
+                    task.errors.append(msg)
+        with _LOCK:
+            task.progress = len(job_ids)
+            task.progress_label = ""
+            task.status = "done"
+            task.result = results
+            task.finished_at = time.monotonic()
 
     t = threading.Thread(target=_runner, daemon=True, name=f"jobsearch-{kind}-{task_id}")
     t.start()

@@ -1,0 +1,159 @@
+# Java + Full Stack across all 14 low-competition UK cities from
+# config/queries.yaml. Uses the same 4 sources (adzuna, indeed, linkedin,
+# glassdoor). Councils source excluded — wmjobs has ~zero Java / Full
+# Stack council roles.
+#
+# Usage (append to preserve any existing rows from other configs):
+#   python -m jobsearch.cli ingest run --config config/queries_java_fullstack.yaml --append
+#   python -m jobsearch.cli filter run --no-export
+#   python -m jobsearch.cli score run --no-export
+
+defaults:
+  country_indeed: UK
+  hours_old: 96          # 4 days
+  results_wanted: 1000
+  description_format: markdown
+  distance: 20
+
+_sources: &sources [adzuna, indeed, linkedin, glassdoor]
+
+queries:
+  # ---- Belfast ----
+  - label: java-belfast
+    search_term: "Java Developer"
+    location: "Belfast"
+    sources: *sources
+  - label: fullstack-belfast
+    search_term: "Full Stack Developer"
+    location: "Belfast"
+    sources: *sources
+
+  # ---- Glasgow ----
+  - label: java-glasgow
+    search_term: "Java Developer"
+    location: "Glasgow"
+    sources: *sources
+  - label: fullstack-glasgow
+    search_term: "Full Stack Developer"
+    location: "Glasgow"
+    sources: *sources
+
+  # ---- Newcastle ----
+  - label: java-newcastle
+    search_term: "Java Developer"
+    location: "Newcastle"
+    sources: *sources
+  - label: fullstack-newcastle
+    search_term: "Full Stack Developer"
+    location: "Newcastle"
+    sources: *sources
+
+  # ---- Southampton ----
+  - label: java-southampton
+    search_term: "Java Developer"
+    location: "Southampton"
+    sources: *sources
+  - label: fullstack-southampton
+    search_term: "Full Stack Developer"
+    location: "Southampton"
+    sources: *sources
+
+  # ---- Cardiff ----
+  - label: java-cardiff
+    search_term: "Java Developer"
+    location: "Cardiff"
+    sources: *sources
+  - label: fullstack-cardiff
+    search_term: "Full Stack Developer"
+    location: "Cardiff"
+    sources: *sources
+
+  # ---- Coventry ----
+  - label: java-coventry
+    search_term: "Java Developer"
+    location: "Coventry"
+    sources: *sources
+  - label: fullstack-coventry
+    search_term: "Full Stack Developer"
+    location: "Coventry"
+    sources: *sources
+
+  # ---- Milton Keynes ----
+  - label: java-milton-keynes
+    search_term: "Java Developer"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: fullstack-milton-keynes
+    search_term: "Full Stack Developer"
+    location: "Milton Keynes"
+    sources: *sources
+
+  # ---- Nottingham ----
+  - label: java-nottingham
+    search_term: "Java Developer"
+    location: "Nottingham"
+    sources: *sources
+  - label: fullstack-nottingham
+    search_term: "Full Stack Developer"
+    location: "Nottingham"
+    sources: *sources
+
+  # ---- Leeds ----
+  - label: java-leeds
+    search_term: "Java Developer"
+    location: "Leeds"
+    sources: *sources
+  - label: fullstack-leeds
+    search_term: "Full Stack Developer"
+    location: "Leeds"
+    sources: *sources
+
+  # ---- Aberdeen ----
+  - label: java-aberdeen
+    search_term: "Java Developer"
+    location: "Aberdeen"
+    sources: *sources
+  - label: fullstack-aberdeen
+    search_term: "Full Stack Developer"
+    location: "Aberdeen"
+    sources: *sources
+
+  # ---- Newport ----
+  - label: java-newport
+    search_term: "Java Developer"
+    location: "Newport"
+    sources: *sources
+  - label: fullstack-newport
+    search_term: "Full Stack Developer"
+    location: "Newport"
+    sources: *sources
+
+  # ---- Exeter ----
+  - label: java-exeter
+    search_term: "Java Developer"
+    location: "Exeter"
+    sources: *sources
+  - label: fullstack-exeter
+    search_term: "Full Stack Developer"
+    location: "Exeter"
+    sources: *sources
+
+  # ---- Ipswich ----
+  - label: java-ipswich
+    search_term: "Java Developer"
+    location: "Ipswich"
+    sources: *sources
+  - label: fullstack-ipswich
+    search_term: "Full Stack Developer"
+    location: "Ipswich"
+    sources: *sources
+
+  # ---- Northampton ----
+  - label: java-northampton
+    search_term: "Java Developer"
+    location: "Northampton"
+    sources: *sources
+  - label: fullstack-northampton
+    search_term: "Full Stack Developer"
+    location: "Northampton"
+    sources: *sources

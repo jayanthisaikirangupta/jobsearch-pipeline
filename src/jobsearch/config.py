@@ -65,12 +65,21 @@ class Candidate(BaseModel):
     visa_status: str = ""
     notice_period_weeks: int = 4
     tagline: str = ""
+    # Fixed job title for the CURRENT employer on every tailored CV. Must
+    # exactly match LinkedIn — recruiters cross-check, and a CV/LinkedIn
+    # title mismatch is an instant-rejection signal.
+    current_employer_title: str = ""
 
 
 class Profile(BaseModel):
     candidate: Candidate
     skills_must_have: list[str] = Field(default_factory=list)
     skills_nice_to_have: list[str] = Field(default_factory=list)
+    # Per-lane must-have lists (keys: "software", "ai"). When set, the
+    # scorer matches a JD against the lane its title belongs to instead
+    # of the union list — stops a LangChain-only JD scoring full marks
+    # as a Java role and vice versa.
+    skills_lanes: dict[str, list[str]] = Field(default_factory=dict)
     target_socs: list[int] = Field(default_factory=list)
     salary_floor_gbp: int = 33_400
     salary_target_gbp: int = 38_290

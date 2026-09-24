@@ -39,7 +39,7 @@ The candidate has multiple resume variants on file (the EXPERIENCE INVENTORY sec
 Hard rules:
 - Preserve every employer, every set of dates, every location, and every degree exactly as in the source CV. Do NOT add new employers or change any dates.
 - Job titles for PAST employers (TCS / Lloyds, University of Leicester, anything pre-2025) must stay exactly as written in the source CV — those titles were finalised long ago and recruiters can verify them via references.
-- Job title for the CURRENT employer (Kuehne+Nagel UK, Jan 2025 onwards) MAY be adapted to mirror the JD-adaptive headline, because the candidate has held this title under multiple defensible names across different inventory variants ("AI Engineer", "Analyst Programmer (Full Stack)", "Software Engineer"). Use the same role identity as the headline, then keep the subtitle (e.g. "AI & Travel/Expense Platform") to anchor the team scope. The two MUST be consistent — never let the headline say "Senior Software Engineer" while the K+N title still reads "Analyst Programmer".
+- Job title for the CURRENT employer (Kuehne+Nagel UK, Jan 2025 onwards) is FIXED and supplied in the <fixed_current_title> tag in the user message. Use it VERBATIM on every tailored CV — never adapt, inflate, or re-word it to match the JD. Recruiters cross-check the CV against LinkedIn, and a title mismatch between the two is an instant-rejection signal; consistency across every application matters more than per-JD mirroring. The subtitle (e.g. "AI & Travel/Expense Platform") may still be chosen from inventory variants to fit the JD's domain.
 - Only edit text content (profile prose, skill items, bullets, project blurbs). You may reorder, drop weak items, or split one bullet into two.
 - Mirror nouns/verbs from the JD when they truthfully apply to the candidate's experience.
 - Quantify with numbers already present in the source CV or inventory when possible. Do NOT fabricate metrics.
@@ -70,31 +70,22 @@ JD-ADAPTIVE POSITIONING (this is the single biggest scoring lever):
 
 Every CV-section ordering and the headline must match what THIS JD's recruiter is screening for. The candidate's static identity ("AI Engineer | GenAI & Full-Stack Developer") is irrelevant to the recruiter — they care that the CV reads like the role they posted.
 
-1. HEADLINE (top of the CV, sits below the name): write a JD-matched 1-line role identity. **Mirror the JD's exact seniority prefix** (Senior, Lead, Staff, Principal) when present — the candidate has 6+ years and is defensibly Senior on Java/full-stack. Use the JD's role title plus 2-3 of its most-prominent skills.
+1. HEADLINE (top of the CV, sits below the name): write a JD-matched 1-line role identity using the JD's role title plus 2-3 of its most-prominent skills. Do NOT copy seniority prefixes into the headline — no "Senior", "Lead", "Staff", "Principal". The candidate's 6 years read as strong mid-level; seniority claims live in the profile prose ("6+ years..."), not the headline, and an unprefixed headline can never contradict the fixed K+N title or LinkedIn.
    Examples:
      JD title = "Senior Software Engineer", JD lists Java + microservices + AWS
-       → "Senior Software Engineer | Java, Cloud-Native & Microservices"
+       → "Software Engineer | Java, Cloud-Native & Microservices"
      JD title = "AI Engineer", JD lists RAG + agentic
        → "AI Engineer | GenAI, RAG & Agentic Systems"
      JD title = "Full-Stack Engineer", JD lists Angular + Node
        → "Full-Stack Engineer | Angular, Node.js & TypeScript"
      JD title = "Lead Backend Engineer"
-       → "Lead Backend Engineer | Java, Spring Boot & Microservices"
-   Exceptions where you must NOT mirror the seniority verbatim:
-     - "Staff" / "Principal" / "Distinguished" / "Director" / "Head of" — the candidate has 6 years, not 10+. Drop one rung: "Senior" instead of "Staff/Principal".
-     - "Junior" / "Graduate" / "Intern" / "Trainee" — the candidate is over-qualified. Use the unprefixed role title.
+       → "Backend Engineer | Java, Spring Boot & Microservices"
+   For "Junior" / "Graduate" / "Intern" / "Trainee" JDs: also use the unprefixed role title.
    Never copy the static tagline from the candidate's existing CV — it almost always misaligns. Always recalculate per JD.
 
-2. CURRENT EMPLOYER TITLE (Kuehne+Nagel only): the experience-block title for K+N must mirror the headline's role identity. Headline-and-K+N consistency matters more than perfect verbatim copying of any single source variant — the variants disagree among themselves anyway ("AI Engineer", "Analyst Programmer (Full Stack)", "Software Engineer"). Examples:
-     headline = "Senior Software Engineer | Java, Cloud-Native & Microservices"
-       → K+N title = "Senior Software Engineer", subtitle = "Travel & Expense Platform"
-     headline = "AI Engineer | GenAI, RAG & Agentic Systems"
-       → K+N title = "AI Engineer", subtitle = "AI & Travel/Expense Platform"
-     headline = "Full-Stack Engineer | Angular, Java & TypeScript"
-       → K+N title = "Full-Stack Engineer", subtitle = "Travel & Expense Platform"
-   Subtitle should reflect the team/platform scope; pick the version from inventory that best fits the JD. NEVER let the K+N title clash with the headline.
+2. CURRENT EMPLOYER TITLE (Kuehne+Nagel only): use the <fixed_current_title> value VERBATIM. The headline and the K+N title are allowed to differ — the headline is positioning, the employment title is a verifiable fact. Pick the subtitle from the inventory variant that best fits the JD's domain.
 
-3. PROFILE FIRST SENTENCE: lead with the JD's role identity (matching whatever seniority you put in the headline) plus the candidate's years of experience in that specific lane. Generic openers work, but JD-anchored openers work better.
+3. PROFILE FIRST SENTENCE: lead with the JD's role identity plus the candidate's years of experience in that specific lane. This is where seniority is claimed truthfully ("6+ years"), instead of via title prefixes.
    Example: for a "Senior Software Engineer with Java leadership" JD, open with:
      "Senior software engineer with 6+ years architecting and delivering Java microservices in regulated Tier 1 banking environments..."
    Not:
@@ -201,6 +192,9 @@ def tailor(resume_text: str, job_title: str, company: str, jd: str,
     settings = get_settings()
     client = AnthropicBedrock(aws_region=settings.aws_region)
 
+    from ..config import get_profile
+    current_title = get_profile().candidate.current_employer_title or "AI Engineer"
+
     # Inventory is identical across all jobs in a run (same .docx files), so
     # the cache_control on this block hits 100% after the first call.
     inv = _inventory.build_inventory()
@@ -227,6 +221,7 @@ def tailor(resume_text: str, job_title: str, company: str, jd: str,
                 f"Tailor the source CV for this role. Use the EXPERIENCE INVENTORY "
                 f"to fill JD-specific gaps the source variant doesn't cover, "
                 f"following the GROUNDED AUGMENTATION rules in the system prompt.\n\n"
+                f"<fixed_current_title>{current_title}</fixed_current_title>\n\n"
                 f"<role>\n"
                 f"Company: {company}\n"
                 f"Title: {job_title}\n"

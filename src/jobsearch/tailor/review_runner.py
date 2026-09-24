@@ -217,11 +217,13 @@ def _review_each(apps: list[dict], scored: pd.DataFrame) -> list[dict]:
         # alongside the deterministic score, and you can sort by it.
         try:
             score_val = c.get("score")
+            instr = (c.get("retailor_instructions") or "").strip() if c.get("needs_retailor") else ""
             db.set_review(
                 app["job_id"],
                 score=int(score_val) if score_val is not None else None,
                 grade=str(c.get("overall_grade") or "") or None,
                 verdict=str(c.get("verdict") or "") or None,
+                retailor_instructions=instr or None,
             )
         except Exception as e:  # noqa: BLE001
             console.print(f"[yellow]Could not persist review for {app['job_id']}: {e}[/]")

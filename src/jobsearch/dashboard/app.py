@@ -25,6 +25,10 @@ from fastapi.templating import Jinja2Templates
 from ..tracker import db
 from . import data, tasks
 
+# Minimum Claude-reviewer score a tailored CV needs before the dashboard
+# allows marking the job 'applied'. Override per-request with force=true.
+APPLY_MIN_REVIEWER_SCORE = 80
+
 
 _TEMPLATES_DIR = Path(__file__).parent / "templates"
 templates = Jinja2Templates(directory=str(_TEMPLATES_DIR))
@@ -140,13 +144,35 @@ def _ensure_tracker_row(job_id: str) -> dict | None:
 
 @app.post("/tracker/{job_id}/status", response_class=HTMLResponse)
 def update_status(request: Request, job_id: str,
-                  new_status: str = Form(...)) -> HTMLResponse:
+                  new_status: str = Form(...),
+                  force: bool = Form(False)) -> HTMLResponse:
     canonical = _STATUS_ALIASES.get(new_status, new_status)
     if canonical not in db.VALID_STATUSES:
         raise HTTPException(400, f"Invalid status {new_status!r}")
     rec = _ensure_tracker_row(job_id)
     if not rec:
         raise HTTPException(404, f"Job {job_id} not in scored data — re-ingest?")
+    # Reviewer gate: don't let a weak or unreviewed CV be marked 'applied'.
+    # A tailored CV must score >= APPLY_MIN_REVIEWER_SCORE from the Claude
+    # reviewer before applying — submitting C-grade resumes is how 284
+    # applications produced zero interviews. Pass force=true to override
+    # deliberately (e.g. applied with a manually written CV).
+    if canonical == "applied" and not force:
+        current = db.get(job_id) or {}
+        rscore = current.get("reviewer_score")
+        if rscore is None:
+            raise HTTPException(
+                409,
+                "Blocked: this CV hasn't been reviewed yet. Run Review first "
+                "(or resubmit with force=true to override).",
+            )
+        if int(rscore) < APPLY_MIN_REVIEWER_SCORE:
+            raise HTTPException(
+                409,
+                f"Blocked: reviewer scored this CV {rscore}/100, below the "
+                f"apply threshold of {APPLY_MIN_REVIEWER_SCORE}. Retailor it "
+                f"(or resubmit with force=true to override).",
+            )
     db.set_status(job_id, canonical, notes="updated via dashboard")
     # Re-render BOTH panels so the row moves between queue/tracker correctly.
     # HTMX swaps both targets via hx-swap-oob in the response.
@@ -250,6 +276,43 @@ def review_start(request: Request, job_id: str) -> HTMLResponse:
     return _pending_response(request, task_id, "review", job_id)
 
 
+def _retailor_job(job_id: str) -> dict:
+    """Re-tailor a resume using the reviewer's stored instructions, then
+    re-review the result. Runs in a background thread.
+
+    Pulls retailor_instructions off the tracker row and feeds them to the
+    tailor LLM as extra_context. force=True so the existing resume on disk
+    is overwritten in place.
+    """
+    from ..tailor import runner as tailor_runner
+    from ..tailor import review_runner
+
+    rec = db.get(job_id)
+    if not rec:
+        raise RuntimeError(f"Job {job_id} not in tracker — tailor + review it first.")
+    instructions = (rec.get("retailor_instructions") or "").strip()
+    if not instructions:
+        raise RuntimeError(
+            "No retailor instructions on file. Run review first, or the "
+            "reviewer concluded no changes are needed."
+        )
+    out = tailor_runner.run_for_id(job_id, force=True, extra_context=instructions)
+    if not out:
+        raise RuntimeError("Retailor produced no output.")
+    results = review_runner.review_ids([job_id])
+    return {"resume": str(out), "review": results[0] if results else None}
+
+
+@app.post("/retailor/{job_id}", response_class=HTMLResponse)
+def retailor_start(request: Request, job_id: str) -> HTMLResponse:
+    """Re-tailor a resume using the reviewer's stored revision guidance."""
+    existing = tasks.active_for(job_id, kind="retailor")
+    if existing:
+        return _pending_response(request, existing.id, "retailor", job_id)
+    task_id = tasks.start("retailor", job_id, _retailor_job, job_id)
+    return _pending_response(request, task_id, "retailor", job_id)
+
+
 def _cover_letter_job(job_id: str, force: bool) -> str:
     """Worker function — runs in a thread."""
     from .. import cover_letter as cl_mod
@@ -267,6 +330,80 @@ def cover_letter_start(request: Request, job_id: str,
         return _pending_response(request, existing.id, "cover-letter", job_id)
     task_id = tasks.start("cover-letter", job_id, _cover_letter_job, job_id, force)
     return _pending_response(request, task_id, "cover-letter", job_id)
+
+
+# --- Bulk actions ---------------------------------------------------------
+
+def _parse_job_ids(raw: str) -> list[str]:
+    """Form posts the checkbox values as a comma-separated string. Split,
+    strip, dedupe (preserve order)."""
+    seen: set[str] = set()
+    out: list[str] = []
+    for piece in (raw or "").split(","):
+        jid = piece.strip()
+        if jid and jid not in seen:
+            seen.add(jid)
+            out.append(jid)
+    return out
+
+
+def _label_for(job_id: str) -> str:
+    rec = db.get(job_id)
+    if rec and rec.get("company"):
+        return rec["company"]
+    return job_id
+
+
+@app.post("/bulk/tailor", response_class=HTMLResponse)
+def bulk_tailor(request: Request,
+                job_ids: str = Form(...),
+                force: bool = Form(False)) -> HTMLResponse:
+    ids = _parse_job_ids(job_ids)
+    if not ids:
+        raise HTTPException(400, "No jobs selected")
+    task_id = tasks.start_bulk(
+        "bulk-tailor", ids,
+        lambda jid: _tailor_job(jid, force),
+        label_fn=_label_for,
+    )
+    return _pending_response(request, task_id, "bulk-tailor", f"{len(ids)} jobs")
+
+
+@app.post("/bulk/review", response_class=HTMLResponse)
+def bulk_review(request: Request, job_ids: str = Form(...)) -> HTMLResponse:
+    ids = _parse_job_ids(job_ids)
+    if not ids:
+        raise HTTPException(400, "No jobs selected")
+    task_id = tasks.start_bulk(
+        "bulk-review", ids,
+        _review_job,
+        label_fn=_label_for,
+    )
+    return _pending_response(request, task_id, "bulk-review", f"{len(ids)} jobs")
+
+
+@app.post("/bulk/skip", response_class=HTMLResponse)
+def bulk_skip(request: Request, job_ids: str = Form(...)) -> HTMLResponse:
+    """Skip is fast (just status updates) — do it synchronously and return
+    refreshed panels straight away, no polling banner needed."""
+    ids = _parse_job_ids(job_ids)
+    if not ids:
+        raise HTTPException(400, "No jobs selected")
+    for jid in ids:
+        if not _ensure_tracker_row(jid):
+            continue
+        db.set_status(jid, "withdrawn", notes="bulk-skipped via dashboard")
+    # Return _task_done shape so the submitBulk() target (#task-status) gets
+    # cleared and #queue + #tracker re-render via OOB swaps.
+    return templates.TemplateResponse(
+        "_task_done.html",
+        {
+            "request": request,
+            "rows": data.action_queue(),
+            "tracker_rows": data.tracker_view(),
+            "STATUS_ACTIONS": data.STATUS_ACTIONS,
+        },
+    )
 
 
 # --- Add by URL -----------------------------------------------------------
@@ -434,6 +571,7 @@ def ask_poll(request: Request, task_id: str) -> HTMLResponse:
 def _pending_response(request: Request, task_id: str, kind: str,
                       job_id: str) -> HTMLResponse:
     """Render the placeholder row that polls until the task finishes."""
+    t = tasks.get(task_id)
     return templates.TemplateResponse(
         "_task_pending.html",
         {
@@ -441,6 +579,10 @@ def _pending_response(request: Request, task_id: str, kind: str,
             "task_id": task_id,
             "kind": kind,
             "job_id": job_id,
+            "progress": (t.progress if t else None),
+            "total": (t.total if t else None),
+            "progress_label": (t.progress_label if t else ""),
+            "error_count": (len(t.errors) if t else 0),
         },
     )
 
@@ -472,6 +614,10 @@ def task_poll(request: Request, task_id: str) -> HTMLResponse:
                 "task_id": t.id,
                 "kind": t.kind,
                 "job_id": t.job_id,
+                "progress": t.progress,
+                "total": t.total,
+                "progress_label": t.progress_label,
+                "error_count": len(t.errors),
             },
         )
     # status == "error"

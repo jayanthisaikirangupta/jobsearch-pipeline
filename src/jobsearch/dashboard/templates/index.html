@@ -179,6 +179,24 @@
       text-align: center; padding: 40px; color: var(--gray);
     }
 
+    /* --- Bulk action bar (Action Queue) --- */
+    .bulk-bar {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 12px;
+      background: #f9fafb;
+      border-bottom: 1px solid var(--border);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+      flex-wrap: wrap;
+    }
+    .bulk-check { display: flex; align-items: center; gap: 6px; font-size: 12px; cursor: pointer; }
+    .bulk-count { font-size: 12px; }
+    .bulk-actions { display: flex; gap: 6px; margin-left: auto; flex-wrap: wrap; }
+    input.bulk-row { cursor: pointer; }
+
     /* --- Task banner (Tailor / Review polling state) --- */
     #task-status:empty { display: none; }
     .task-banner {

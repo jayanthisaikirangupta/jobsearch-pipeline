@@ -40,6 +40,10 @@ _LATER_COLUMNS = [
     ("reviewer_grade", "TEXT"),
     ("reviewer_verdict", "TEXT"),
     ("reviewer_at", "TEXT"),
+    # Free-text instructions the reviewer produced for the next tailor run.
+    # Populated when the critique says the resume needs concrete edits;
+    # consumed by /retailor as extra_context for the tailor LLM.
+    ("retailor_instructions", "TEXT"),
 ]
 
 VALID_STATUSES = {
@@ -143,15 +147,22 @@ def upsert_application(
 
 
 def set_review(job_id: str, *, score: int | None, grade: str | None,
-               verdict: str | None) -> bool:
-    """Persist reviewer output onto the tracker row. Used by review_runner."""
+               verdict: str | None,
+               retailor_instructions: str | None = None) -> bool:
+    """Persist reviewer output onto the tracker row. Used by review_runner.
+
+    retailor_instructions: optional free-text guidance produced by the
+    reviewer when it thinks the resume should be re-tailored. Read back by
+    /retailor as extra_context for the next tailor run.
+    """
     with _conn() as c:
         cur = c.execute(
             """UPDATE applications SET
                 reviewer_score=?, reviewer_grade=?, reviewer_verdict=?,
-                reviewer_at=?, updated_at=?
+                reviewer_at=?, retailor_instructions=?, updated_at=?
                WHERE job_id=?""",
-            (score, grade, verdict, _now(), _now(), job_id),
+            (score, grade, verdict, _now(),
+             retailor_instructions, _now(), job_id),
         )
         return cur.rowcount > 0
 

@@ -29,6 +29,7 @@ import yaml
 
 from ...config import _PROJECT_ROOT
 from ..base import BaseSource, Query
+from ._ats_common import load_tokens as _shared_load_tokens
 
 
 _API = "https://boards-api.greenhouse.io/v1/boards/{token}/jobs"
@@ -37,18 +38,10 @@ _TOKENS_PATH = _PROJECT_ROOT / "config" / "sponsor_tokens.yaml"
 
 
 def _load_tokens() -> list[str]:
-    if not _TOKENS_PATH.exists():
-        return []
-    cfg = yaml.safe_load(_TOKENS_PATH.read_text(encoding="utf-8")) or {}
-    raw = cfg.get("greenhouse") or []
-    # de-dupe preserving order
-    seen, out = set(), []
-    for t in raw:
-        t = str(t).strip().lower()
-        if t and t not in seen:
-            seen.add(t)
-            out.append(t)
-    return out
+    # Delegates to the shared loader so both the curated AND the
+    # auto-discovered token files feed this source. Lower-cases because
+    # Greenhouse board tokens are always lower-case.
+    return [t.lower() for t in _shared_load_tokens("greenhouse")]
 
 
 def _row_id(token: str, internal_id: int | str | None,
@@ -100,7 +93,9 @@ def _matches_location(loc: str, target: str) -> bool:
                     if len(w) > 2 and w.lower() not in {"united", "kingdom", "uk", "gb"}}
     if not target_words:
         return target_lower in loc_lower
-    return any(w in loc_lower for w in target_words)
+    # Multi-word cities (Milton Keynes, Hemel Hempstead) need ALL tokens to
+    # match, otherwise "Milton Park, London" leaks into a Milton Keynes search.
+    return all(w in loc_lower for w in target_words)
 
 
 class Source(BaseSource):

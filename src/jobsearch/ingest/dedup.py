@@ -1,17 +1,20 @@
 """Post-ingest dedup.
 
-Same role posted via different URLs / sources / agencies all collapse to one
-row. Dedup key is the normalized (company, title, location) tuple — strong
-enough to catch the real duplicates we see in production, weak enough to keep
-genuinely different roles at the same company (e.g. "Senior AI Engineer -
-Knowledge Graphs" vs "- Recommendation").
+Same role posted via different URLs / sources / cities all collapse to one
+row. Dedup key is the normalized (company, title) tuple — different titles
+at the same company stay distinct (e.g. "Senior AI Engineer - Knowledge
+Graphs" vs "- Recommendation") but the same title scraped under multiple
+city searches (LinkedIn returns "Arup Enterprise Architect" for every UK
+city query with a different location string each time) collapses into one.
 
-The picked-representative row gets two new columns:
-  * dup_count   — how many duplicate rows collapsed into this one
-  * dup_sources — comma-separated list of distinct sources that posted it
+The picked-representative row gets three new columns:
+  * dup_count       — how many duplicate rows collapsed into this one
+  * dup_sources     — comma-separated list of distinct sources that posted it
+  * dup_locations   — comma-separated distinct location strings observed
 
-These are surfaced on the Top_Picks Excel sheet so a high dup_count is a
-soft signal that the role is real (not a one-off scrape glitch).
+A high dup_count is a soft signal that the role is real (not a one-off
+scrape glitch) and that it's listed broadly enough to plausibly be remote/
+UK-wide rather than tied to the representative row's specific location.
 """
 from __future__ import annotations
 
@@ -70,27 +73,36 @@ def _representative_index(group: pd.DataFrame, tracked_ids: set[str] | None = No
     """Pick the best row out of a duplicate group. Tiebreakers, in order:
       1. id is already in the tracker (preserves tailored work)
       2. has any salary info
-      3. longest description (proxy for richest source)
-      4. most recent posted_at
-      5. preferred source order (indeed > glassdoor > linkedin)
+      3. has a non-empty location string (since location is no longer in
+         the dedup key, prefer a row that actually names the place)
+      4. longest description (proxy for richest source)
+      5. most recent posted_at
+      6. preferred source order (adzuna > indeed > glassdoor > linkedin)
     """
-    SOURCE_RANK = {"indeed": 0, "glassdoor": 1, "linkedin": 2}
+    SOURCE_RANK = {"adzuna": 0, "indeed": 1, "glassdoor": 2, "linkedin": 3}
     tracked_ids = tracked_ids or set()
     is_tracked = group["id"].isin(tracked_ids)
     has_salary = group[["min_amount", "max_amount"]].notna().any(axis=1)
+    has_loc = group["location"].fillna("").astype(str).str.strip().ne("")
     desc_len = group["description"].fillna("").str.len()
-    posted = pd.to_datetime(group["posted_at"], errors="coerce")
+    # format="mixed" parses each element by its own format without the
+    # dateutil-fallback warning; utc=True normalises the tz-aware ISO
+    # timestamps (Ashby/Greenhouse) against naive dates (Workable) so the
+    # recency sort below never compares aware vs naive.
+    posted = pd.to_datetime(group["posted_at"], errors="coerce",
+                            format="mixed", utc=True)
     src_rank = group["source"].map(SOURCE_RANK).fillna(99)
 
     ranked = pd.DataFrame({
         "is_tracked": is_tracked.astype(int),
         "has_salary": has_salary.astype(int),
+        "has_loc": has_loc.astype(int),
         "desc_len": desc_len,
         "posted": posted,
         "src_rank": -src_rank,  # smaller rank = better, so flip sign
     }, index=group.index).sort_values(
-        ["is_tracked", "has_salary", "desc_len", "posted", "src_rank"],
-        ascending=[False, False, False, False, False],
+        ["is_tracked", "has_salary", "has_loc", "desc_len", "posted", "src_rank"],
+        ascending=[False, False, False, False, False, False],
         na_position="last",
     )
     return ranked.index[0]
@@ -125,24 +137,27 @@ def deduplicate(df: pd.DataFrame, tracked_ids: set[str] | None = None) -> pd.Dat
     work = df.copy()
     work["_norm_company"] = work["company"].map(_norm_company)
     work["_norm_title"] = work["title"].map(_norm_title)
-    work["_norm_location"] = work["location"].map(_norm_location)
 
     keep_indices: list = []
     dup_counts: dict = {}
     dup_sources: dict = {}
+    dup_locations: dict = {}
 
     grouped = work.groupby(
-        ["_norm_company", "_norm_title", "_norm_location"], dropna=False, sort=False
+        ["_norm_company", "_norm_title"], dropna=False, sort=False
     )
     for _, group in grouped:
         idx = _representative_index(group, tracked_ids=tracked_ids)
         keep_indices.append(idx)
         dup_counts[idx] = len(group)
         dup_sources[idx] = ",".join(sorted(set(group["source"].dropna().astype(str))))
+        locs = sorted({str(x).strip() for x in group["location"].dropna() if str(x).strip()})
+        dup_locations[idx] = ",".join(locs)
 
     out = work.loc[keep_indices].copy()
     out["dup_count"] = out.index.map(dup_counts)
     out["dup_sources"] = out.index.map(dup_sources)
-    out = out.drop(columns=["_norm_company", "_norm_title", "_norm_location"])
+    out["dup_locations"] = out.index.map(dup_locations)
+    out = out.drop(columns=["_norm_company", "_norm_title"])
     out = out.reset_index(drop=True)
     return out

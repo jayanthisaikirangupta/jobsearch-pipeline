@@ -55,6 +55,7 @@ class QueueRow:
     resume_path: str
     review_md_path: str  # derived from resume_path
     cover_letter_path: str = ""  # derived: output/CV/{job_id}_{Company}_CoverLetter.docx
+    retailor_instructions: str = ""  # reviewer-produced; empty = no retailor needed
 
     @property
     def has_review(self) -> bool:
@@ -67,6 +68,10 @@ class QueueRow:
     @property
     def has_cover_letter(self) -> bool:
         return bool(self.cover_letter_path)
+
+    @property
+    def needs_retailor(self) -> bool:
+        return bool(self.retailor_instructions)
 
 
 @dataclass
@@ -161,6 +166,7 @@ def _row_from(scored_row: pd.Series, tracker_rec: dict[str, Any] | None) -> Queu
         resume_path=resume,
         review_md_path=review_md,
         cover_letter_path=cl_path,
+        retailor_instructions=str(rec.get("retailor_instructions", "") or ""),
     )
 
 

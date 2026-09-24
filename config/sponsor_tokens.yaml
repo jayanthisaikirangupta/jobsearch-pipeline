@@ -36,3 +36,31 @@ lever:
   - spotify             # 44 UK
   - palantir            # 34 UK
   - binance             # 1 UK
+
+# Verified 2026-07-04 by direct API probes against
+# api.ashbyhq.com/posting-api/job-board/<TOKEN>. UK counts inline.
+# Discovery: careers pages redirecting to jobs.ashbyhq.com/<TOKEN>.
+ashby:
+  - elliptic            # 43 jobs, ~24 UK — crypto compliance, AI-heavy
+  - synthesia           # 73 jobs, ~28 UK — GenAI video, London
+  - wayve               # 107 jobs, ~27 UK — autonomous driving AI
+  - thought-machine     # 42 jobs, ~16 UK — core banking, Java-heavy
+  - quantexa            # 26 jobs, ~9 UK — data/AI, London
+  - paddle              # 27 jobs, ~3 UK
+  - beamery             # 3 jobs, ~2 UK
+  - zilch               # 14 jobs, ~1 UK
+  - robin-ai            # 8 jobs, ~1 UK — legal AI
+  - tractable           # 1 job
+
+# Verified 2026-07-04 against apply.workable.com/api/v1/widget/accounts/
+# <TOKEN>?details=true (v1 widget returns full descriptions in one call;
+# v3 does not). Workable is the SME/scale-up tier — grow this list from
+# the MK/Northampton directory and target-city sponsor research.
+workable:
+  - zego                # 25 jobs — UK insurtech
+  - huggingface         # 7 jobs — AI, has UK remote roles
+
+# Verified 2026-07-04 against api.smartrecruiters.com/v1/companies/
+# <TOKEN>/postings. CASE-SENSITIVE — use the exact casing below.
+smartrecruiters:
+  - Experian            # 586 global postings, UK subset — Nottingham HQ

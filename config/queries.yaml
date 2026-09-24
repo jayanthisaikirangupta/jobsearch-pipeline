@@ -1,95 +1,585 @@
-# Master query config. Adzuna-only, UK-wide.
+# Master query config. Role coverage × UK low-competition cities only.
 #
-# Free tier is 250 calls/day per app_id; each query below burns up to 3 calls
-# (3 pages * 50 results). With ~14 queries that's ~42 calls per ingest run,
-# well within budget.
+# Goal: surface AI / GenAI / data / software roles in regional UK hubs where
+# applicant volume per posting is materially lower than London / Manchester /
+# Cambridge / Oxford / Bristol / Edinburgh. ML Engineer titles are excluded
+# per Sai's profile focus (GenAI + applied AI, not classic ML modelling).
 #
-# Location strategy: empty `where` -> Adzuna treats as nationwide UK. The
-# `gb` country code in the endpoint already pins it to the UK.
+# No UK-wide block: blank/country-level locations cause LinkedIn to surface
+# US + remote-anywhere roles, and Indeed without a city pulls nationwide
+# noise. Every query targets a specific researched UK city so the dataset
+# stays UK-only AND inside the low-competition target set.
 #
-# Structure:
-#   1. Core AI / GenAI — broadened: every common title variant
-#   2. SWE / full-stack — TCS-Lloyds + K+N backend depth
-#   3. Data engineering — SOC 2133 fit (Data Scientist + ML Engineer
-#      intentionally excluded per profile focus)
+# Every query hits ALL four sources: Adzuna + Indeed + LinkedIn + Glassdoor.
+# Glassdoor's resolver strips "City, Country" -> "City" inside
+# ingest/sources/_jobspy.py, so plain city names work across all four
+# sources without per-query overrides.
+#
+# Per-city role coverage (broad terms — each substring-matches many titles):
+#   "Generative AI"      -> GenAI Engineer/Developer/Lead/Architect/Specialist/Consultant
+#   "AI Engineer"        -> AI / Senior AI / Lead AI / Applied AI / AI Solutions Engineer
+#   "AI Developer"       -> AI Developer / GenAI Developer / LLM Developer
+#   "LLM"                -> LLM Engineer / LLM Developer / LLM Ops
+#   "NLP"                -> NLP Engineer / NLP Scientist / NLP Developer
+#   "AI Architect"       -> AI Solutions Architect / GenAI Architect / Principal AI Architect
+#   "AI Consultant"      -> AI Consultant / GenAI Consultant / AI Strategy
+#   "Data Engineer"      -> Data / Senior Data / Lead Data Engineer (SOC 2133)
+#
+# Location list (research 2026-06-30 — Tech Nation / DSIT AI Sector Study
+# 2025, Whitecap FinTech reports, Invest NI, CSConnected, Indeed posting-
+# volume sweeps, Home Office sponsor register 2026-06-30):
+#
+#   Belfast        — Kainos, Liberty IT, Allstate NI, FinTrU, AquaQ
+#   Glasgow        — AutoRek, ThinkAnalytics, BAE Govan, JPMC, Morgan Stanley
+#   Newcastle      — Sage HQ, Atom Bank, Scott Logic, NIC for Data (Helix)
+#   Southampton    — RAi-UK host, Ordnance Survey, Roke Manor, Lloyd's Register
+#   Cardiff        — Admiral, Amplyfi, Antiverse, Companies House, ONS-adjacent
+#   Coventry       — MTC + WMG catapults, JLR, Aptiv, KPIT, FANUC
+#   Milton Keynes  — Connected Places Catapult, OU KMi, Santander, MB Financial Services
+#   Nottingham     — Experian, Capital One Europe, Boots, E.ON, BlueSkeye AI
+#   Leeds          — LIDA, BJSS, TransUnion, Asda HQ, Jet2, EMIS, Aire Logic
+#   Aberdeen       — Arria NLG, Aker Solutions, Wood plc, RGU energy-AI
+#   Newport        — Compound Semi Catapult, General Dynamics UK, KLA, ONS, USW
+#   Exeter         — Met Office HQ, IDSAI (Turing partner), digiLab, HydroSurv
+#   Ipswich        — BT Adastral Park / Innovation Martlesham (~80 firms)
+#   Northampton    — Leonardo, easyJet, Carlsberg-Marston's (narrow, Sai-requested)
+#
+# Adzuna free tier = 250 calls/day per app_id; each query burns up to 3 calls
+# (3 pages * 50). 14 cities × 8 roles × 3 pages = 336 calls — OVER the 250
+# daily cap. Splitting Adzuna queries across two runs/day handles this; the
+# runner already gracefully drops a source if the API 4xxs mid-page.
 
 defaults:
   country_indeed: UK
   hours_old: 96          # 4 days
   results_wanted: 1000
   description_format: markdown
-  distance: 20            # ignored when `where` is empty (nationwide)
+  distance: 20
+
+_sources: &sources [adzuna, indeed, linkedin, glassdoor]
 
 queries:
-  # ===== 1. Core AI / GenAI — cast wide on title variants =====
-  - label: ai-engineer-uk
+  # ---- Belfast ----
+  - label: genai-belfast
+    search_term: "Generative AI"
+    location: "Belfast"
+    sources: *sources
+  - label: ai-engineer-belfast
     search_term: "AI Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: genai-engineer-uk
-    search_term: "Generative AI Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: llm-engineer-uk
-    search_term: "LLM Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: applied-ai-engineer-uk
-    search_term: "Applied AI Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: ai-developer-uk
+    location: "Belfast"
+    sources: *sources
+  - label: ai-developer-belfast
     search_term: "AI Developer"
-    location: ""
-    sources: [adzuna]
-
-  - label: ai-software-engineer-uk
-    search_term: "AI Software Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: prompt-engineer-uk
-    search_term: "Prompt Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: nlp-engineer-uk
-    search_term: "NLP Engineer"
-    location: ""
-    sources: [adzuna]
-
-  # ===== 2. SWE / full-stack =====
-  - label: software-engineer-uk
-    search_term: "Software Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: fullstack-engineer-uk
-    search_term: "Full Stack Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: backend-engineer-uk
-    search_term: "Backend Engineer"
-    location: ""
-    sources: [adzuna]
-
-  - label: java-developer-uk
-    search_term: "Java Developer"
-    location: ""
-    sources: [adzuna]
-
-  - label: python-developer-uk
-    search_term: "Python Developer"
-    location: ""
-    sources: [adzuna]
-
-  # ===== 3. Data engineering =====
-  - label: data-engineer-uk
+    location: "Belfast"
+    sources: *sources
+  - label: llm-belfast
+    search_term: "LLM"
+    location: "Belfast"
+    sources: *sources
+  - label: nlp-belfast
+    search_term: "NLP"
+    location: "Belfast"
+    sources: *sources
+  - label: ai-architect-belfast
+    search_term: "AI Architect"
+    location: "Belfast"
+    sources: *sources
+  - label: ai-consultant-belfast
+    search_term: "AI Consultant"
+    location: "Belfast"
+    sources: *sources
+  - label: data-engineer-belfast
     search_term: "Data Engineer"
-    location: ""
-    sources: [adzuna]
+    location: "Belfast"
+    sources: *sources
+
+  # ---- Glasgow ----
+  - label: genai-glasgow
+    search_term: "Generative AI"
+    location: "Glasgow"
+    sources: *sources
+  - label: ai-engineer-glasgow
+    search_term: "AI Engineer"
+    location: "Glasgow"
+    sources: *sources
+  - label: ai-developer-glasgow
+    search_term: "AI Developer"
+    location: "Glasgow"
+    sources: *sources
+  - label: llm-glasgow
+    search_term: "LLM"
+    location: "Glasgow"
+    sources: *sources
+  - label: nlp-glasgow
+    search_term: "NLP"
+    location: "Glasgow"
+    sources: *sources
+  - label: ai-architect-glasgow
+    search_term: "AI Architect"
+    location: "Glasgow"
+    sources: *sources
+  - label: ai-consultant-glasgow
+    search_term: "AI Consultant"
+    location: "Glasgow"
+    sources: *sources
+  - label: data-engineer-glasgow
+    search_term: "Data Engineer"
+    location: "Glasgow"
+    sources: *sources
+
+  # ---- Newcastle ----
+  - label: genai-newcastle
+    search_term: "Generative AI"
+    location: "Newcastle"
+    sources: *sources
+  - label: ai-engineer-newcastle
+    search_term: "AI Engineer"
+    location: "Newcastle"
+    sources: *sources
+  - label: ai-developer-newcastle
+    search_term: "AI Developer"
+    location: "Newcastle"
+    sources: *sources
+  - label: llm-newcastle
+    search_term: "LLM"
+    location: "Newcastle"
+    sources: *sources
+  - label: nlp-newcastle
+    search_term: "NLP"
+    location: "Newcastle"
+    sources: *sources
+  - label: ai-architect-newcastle
+    search_term: "AI Architect"
+    location: "Newcastle"
+    sources: *sources
+  - label: ai-consultant-newcastle
+    search_term: "AI Consultant"
+    location: "Newcastle"
+    sources: *sources
+  - label: data-engineer-newcastle
+    search_term: "Data Engineer"
+    location: "Newcastle"
+    sources: *sources
+
+  # ---- Southampton ----
+  - label: genai-southampton
+    search_term: "Generative AI"
+    location: "Southampton"
+    sources: *sources
+  - label: ai-engineer-southampton
+    search_term: "AI Engineer"
+    location: "Southampton"
+    sources: *sources
+  - label: ai-developer-southampton
+    search_term: "AI Developer"
+    location: "Southampton"
+    sources: *sources
+  - label: llm-southampton
+    search_term: "LLM"
+    location: "Southampton"
+    sources: *sources
+  - label: nlp-southampton
+    search_term: "NLP"
+    location: "Southampton"
+    sources: *sources
+  - label: ai-architect-southampton
+    search_term: "AI Architect"
+    location: "Southampton"
+    sources: *sources
+  - label: ai-consultant-southampton
+    search_term: "AI Consultant"
+    location: "Southampton"
+    sources: *sources
+  - label: data-engineer-southampton
+    search_term: "Data Engineer"
+    location: "Southampton"
+    sources: *sources
+
+  # ---- Cardiff ----
+  - label: genai-cardiff
+    search_term: "Generative AI"
+    location: "Cardiff"
+    sources: *sources
+  - label: ai-engineer-cardiff
+    search_term: "AI Engineer"
+    location: "Cardiff"
+    sources: *sources
+  - label: ai-developer-cardiff
+    search_term: "AI Developer"
+    location: "Cardiff"
+    sources: *sources
+  - label: llm-cardiff
+    search_term: "LLM"
+    location: "Cardiff"
+    sources: *sources
+  - label: nlp-cardiff
+    search_term: "NLP"
+    location: "Cardiff"
+    sources: *sources
+  - label: ai-architect-cardiff
+    search_term: "AI Architect"
+    location: "Cardiff"
+    sources: *sources
+  - label: ai-consultant-cardiff
+    search_term: "AI Consultant"
+    location: "Cardiff"
+    sources: *sources
+  - label: data-engineer-cardiff
+    search_term: "Data Engineer"
+    location: "Cardiff"
+    sources: *sources
+
+  # ---- Coventry ----
+  - label: genai-coventry
+    search_term: "Generative AI"
+    location: "Coventry"
+    sources: *sources
+  - label: ai-engineer-coventry
+    search_term: "AI Engineer"
+    location: "Coventry"
+    sources: *sources
+  - label: ai-developer-coventry
+    search_term: "AI Developer"
+    location: "Coventry"
+    sources: *sources
+  - label: llm-coventry
+    search_term: "LLM"
+    location: "Coventry"
+    sources: *sources
+  - label: nlp-coventry
+    search_term: "NLP"
+    location: "Coventry"
+    sources: *sources
+  - label: ai-architect-coventry
+    search_term: "AI Architect"
+    location: "Coventry"
+    sources: *sources
+  - label: ai-consultant-coventry
+    search_term: "AI Consultant"
+    location: "Coventry"
+    sources: *sources
+  - label: data-engineer-coventry
+    search_term: "Data Engineer"
+    location: "Coventry"
+    sources: *sources
+
+  # ---- Milton Keynes ----
+  - label: genai-milton-keynes
+    search_term: "Generative AI"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: ai-engineer-milton-keynes
+    search_term: "AI Engineer"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: ai-developer-milton-keynes
+    search_term: "AI Developer"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: llm-milton-keynes
+    search_term: "LLM"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: nlp-milton-keynes
+    search_term: "NLP"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: ai-architect-milton-keynes
+    search_term: "AI Architect"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: ai-consultant-milton-keynes
+    search_term: "AI Consultant"
+    location: "Milton Keynes"
+    sources: *sources
+  - label: data-engineer-milton-keynes
+    search_term: "Data Engineer"
+    location: "Milton Keynes"
+    sources: *sources
+
+  # ---- Nottingham ----
+  - label: genai-nottingham
+    search_term: "Generative AI"
+    location: "Nottingham"
+    sources: *sources
+  - label: ai-engineer-nottingham
+    search_term: "AI Engineer"
+    location: "Nottingham"
+    sources: *sources
+  - label: ai-developer-nottingham
+    search_term: "AI Developer"
+    location: "Nottingham"
+    sources: *sources
+  - label: llm-nottingham
+    search_term: "LLM"
+    location: "Nottingham"
+    sources: *sources
+  - label: nlp-nottingham
+    search_term: "NLP"
+    location: "Nottingham"
+    sources: *sources
+  - label: ai-architect-nottingham
+    search_term: "AI Architect"
+    location: "Nottingham"
+    sources: *sources
+  - label: ai-consultant-nottingham
+    search_term: "AI Consultant"
+    location: "Nottingham"
+    sources: *sources
+  - label: data-engineer-nottingham
+    search_term: "Data Engineer"
+    location: "Nottingham"
+    sources: *sources
+
+  # ---- Leeds ----
+  - label: genai-leeds
+    search_term: "Generative AI"
+    location: "Leeds"
+    sources: *sources
+  - label: ai-engineer-leeds
+    search_term: "AI Engineer"
+    location: "Leeds"
+    sources: *sources
+  - label: ai-developer-leeds
+    search_term: "AI Developer"
+    location: "Leeds"
+    sources: *sources
+  - label: llm-leeds
+    search_term: "LLM"
+    location: "Leeds"
+    sources: *sources
+  - label: nlp-leeds
+    search_term: "NLP"
+    location: "Leeds"
+    sources: *sources
+  - label: ai-architect-leeds
+    search_term: "AI Architect"
+    location: "Leeds"
+    sources: *sources
+  - label: ai-consultant-leeds
+    search_term: "AI Consultant"
+    location: "Leeds"
+    sources: *sources
+  - label: data-engineer-leeds
+    search_term: "Data Engineer"
+    location: "Leeds"
+    sources: *sources
+
+  # ---- Aberdeen ----
+  # Posting volume thin; oil-&-gas / energy-NLP niche (Arria, Wood, Aker).
+  - label: genai-aberdeen
+    search_term: "Generative AI"
+    location: "Aberdeen"
+    sources: *sources
+  - label: ai-engineer-aberdeen
+    search_term: "AI Engineer"
+    location: "Aberdeen"
+    sources: *sources
+  - label: ai-developer-aberdeen
+    search_term: "AI Developer"
+    location: "Aberdeen"
+    sources: *sources
+  - label: llm-aberdeen
+    search_term: "LLM"
+    location: "Aberdeen"
+    sources: *sources
+  - label: nlp-aberdeen
+    search_term: "NLP"
+    location: "Aberdeen"
+    sources: *sources
+  - label: ai-architect-aberdeen
+    search_term: "AI Architect"
+    location: "Aberdeen"
+    sources: *sources
+  - label: ai-consultant-aberdeen
+    search_term: "AI Consultant"
+    location: "Aberdeen"
+    sources: *sources
+  - label: data-engineer-aberdeen
+    search_term: "Data Engineer"
+    location: "Aberdeen"
+    sources: *sources
+
+  # ---- Newport ----
+  - label: genai-newport
+    search_term: "Generative AI"
+    location: "Newport"
+    sources: *sources
+  - label: ai-engineer-newport
+    search_term: "AI Engineer"
+    location: "Newport"
+    sources: *sources
+  - label: ai-developer-newport
+    search_term: "AI Developer"
+    location: "Newport"
+    sources: *sources
+  - label: llm-newport
+    search_term: "LLM"
+    location: "Newport"
+    sources: *sources
+  - label: nlp-newport
+    search_term: "NLP"
+    location: "Newport"
+    sources: *sources
+  - label: ai-architect-newport
+    search_term: "AI Architect"
+    location: "Newport"
+    sources: *sources
+  - label: ai-consultant-newport
+    search_term: "AI Consultant"
+    location: "Newport"
+    sources: *sources
+  - label: data-engineer-newport
+    search_term: "Data Engineer"
+    location: "Newport"
+    sources: *sources
+
+  # ---- Exeter ----
+  - label: genai-exeter
+    search_term: "Generative AI"
+    location: "Exeter"
+    sources: *sources
+  - label: ai-engineer-exeter
+    search_term: "AI Engineer"
+    location: "Exeter"
+    sources: *sources
+  - label: ai-developer-exeter
+    search_term: "AI Developer"
+    location: "Exeter"
+    sources: *sources
+  - label: llm-exeter
+    search_term: "LLM"
+    location: "Exeter"
+    sources: *sources
+  - label: nlp-exeter
+    search_term: "NLP"
+    location: "Exeter"
+    sources: *sources
+  - label: ai-architect-exeter
+    search_term: "AI Architect"
+    location: "Exeter"
+    sources: *sources
+  - label: ai-consultant-exeter
+    search_term: "AI Consultant"
+    location: "Exeter"
+    sources: *sources
+  - label: data-engineer-exeter
+    search_term: "Data Engineer"
+    location: "Exeter"
+    sources: *sources
+
+  # ---- Ipswich ----
+  # BT Adastral Park / Innovation Martlesham — ~80 firms, tiny applicant pool.
+  - label: genai-ipswich
+    search_term: "Generative AI"
+    location: "Ipswich"
+    sources: *sources
+  - label: ai-engineer-ipswich
+    search_term: "AI Engineer"
+    location: "Ipswich"
+    sources: *sources
+  - label: ai-developer-ipswich
+    search_term: "AI Developer"
+    location: "Ipswich"
+    sources: *sources
+  - label: llm-ipswich
+    search_term: "LLM"
+    location: "Ipswich"
+    sources: *sources
+  - label: nlp-ipswich
+    search_term: "NLP"
+    location: "Ipswich"
+    sources: *sources
+  - label: ai-architect-ipswich
+    search_term: "AI Architect"
+    location: "Ipswich"
+    sources: *sources
+  - label: ai-consultant-ipswich
+    search_term: "AI Consultant"
+    location: "Ipswich"
+    sources: *sources
+  - label: data-engineer-ipswich
+    search_term: "Data Engineer"
+    location: "Ipswich"
+    sources: *sources
+
+  # ---- Northampton ----
+  # Narrow per research (Leonardo / easyJet / Carlsberg-Marston's dominate)
+  # but Sai-requested.
+  - label: genai-northampton
+    search_term: "Generative AI"
+    location: "Northampton"
+    sources: *sources
+  - label: ai-engineer-northampton
+    search_term: "AI Engineer"
+    location: "Northampton"
+    sources: *sources
+  - label: ai-developer-northampton
+    search_term: "AI Developer"
+    location: "Northampton"
+    sources: *sources
+  - label: llm-northampton
+    search_term: "LLM"
+    location: "Northampton"
+    sources: *sources
+  - label: nlp-northampton
+    search_term: "NLP"
+    location: "Northampton"
+    sources: *sources
+  - label: ai-architect-northampton
+    search_term: "AI Architect"
+    location: "Northampton"
+    sources: *sources
+  - label: ai-consultant-northampton
+    search_term: "AI Consultant"
+    location: "Northampton"
+    sources: *sources
+  - label: data-engineer-northampton
+    search_term: "Data Engineer"
+    location: "Northampton"
+    sources: *sources
+
+  # ---- Hosted-ATS direct (Greenhouse / Lever / Ashby / Workable / SmartRecruiters) ----
+  # Every company in config/sponsor_tokens.yaml is a pre-vetted licensed
+  # sponsor, so these queries run UK-wide: the token list IS the filter,
+  # and the scorer handles location preference. Jobs land on these boards
+  # hours-to-days before Indeed/LinkedIn scrape them, and the apply URL is
+  # the company's own portal (not an aggregator redirect).
+  #
+  # Lane 1 = Software / Full-Stack (Java or Python backend, Angular/React).
+  # Lane 2 = Applied AI Engineer (GenAI / LLM / agentic).
+  - label: ats-lane1-software
+    search_term: "Software Engineer OR Software Developer OR Java OR Python Developer OR Full Stack OR Full-Stack OR Backend Engineer OR React Developer OR Frontend Engineer"
+    location: "United Kingdom"
+    sources: [greenhouse, lever, ashby, workable, smartrecruiters]
+  - label: ats-lane2-ai
+    search_term: "AI Engineer OR Generative AI OR GenAI OR LLM OR AI Developer OR Applied AI"
+    location: "United Kingdom"
+    sources: [greenhouse, lever, ashby, workable, smartrecruiters]
+
+  # ---- UK councils / local government (wmjobs.co.uk) ----
+  # Council roles almost never sponsor Skilled Worker for tech, but the
+  # board carries genuine AI / data / software openings across ~30
+  # English councils + combined authorities. Kept UK-wide (no location
+  # override) so we don't miss anything; the tailor step still filters
+  # on the sponsor register.
+  - label: councils-ai
+    search_term: "AI"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-engineer
+    search_term: "Data Engineer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-software-engineer
+    search_term: "Software Engineer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-machine-learning
+    search_term: "Machine Learning"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-scientist
+    search_term: "Data Scientist"
+    location: "United Kingdom"
+    sources: [councils]

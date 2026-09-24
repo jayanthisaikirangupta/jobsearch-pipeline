@@ -1,0 +1,96 @@
+# Councils-only query config. Runs ONLY the wmjobs.co.uk scraper.
+#
+# Usage:
+#   python -m jobsearch.cli ingest run --config config/queries_councils.yaml
+#
+# Everything downstream (dedup, sponsor filter, score, tailor, review,
+# dashboard) picks these rows up like any other source once ingest writes
+# jobs_raw.parquet. Sponsor filter will drop most council rows since
+# councils rarely sponsor Skilled Worker for tech — that is expected.
+
+defaults:
+  country_indeed: UK
+  hours_old: 168         # 7 days — councils post less frequently than tech firms
+  results_wanted: 200
+  description_format: markdown
+  distance: 20
+
+queries:
+  # High-signal data / engineering terms. Councils source now applies a
+  # title-only match plus a tech-title whitelist, so a broad word like
+  # "data" no longer drags in non-tech roles.
+  #
+  # Councils on wmjobs mostly publish data / BI / analytics roles rather
+  # than pure AI/ML — the queries reflect that reality.
+  - label: councils-data
+    search_term: "data"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-engineer
+    search_term: "data engineer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-scientist
+    search_term: "data scientist"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-analyst
+    search_term: "data analyst"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-data-architect
+    search_term: "data architect"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-analytics
+    search_term: "analytics"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-business-intelligence
+    search_term: "business intelligence"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-bi-developer
+    search_term: "BI Developer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-insight
+    search_term: "insight"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-software-engineer
+    search_term: "software engineer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-developer
+    search_term: "developer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-ai-engineer
+    search_term: "AI Engineer"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-machine-learning
+    search_term: "machine learning"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-python
+    search_term: "python"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-cloud
+    search_term: "cloud"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-devops
+    search_term: "devops"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-digital-transformation
+    search_term: "digital transformation"
+    location: "United Kingdom"
+    sources: [councils]
+  - label: councils-information-governance
+    search_term: "information governance"
+    location: "United Kingdom"
+    sources: [councils]

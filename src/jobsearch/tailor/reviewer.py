@@ -109,11 +109,31 @@ You must return STRICT JSON only — no prose, no markdown fences:
   "revision_priorities": [
     {"priority": 1, "issue": "<what to fix>", "suggestion": "<how to fix it>"},
     {"priority": 2, "issue": "...", "suggestion": "..."}
-  ]
+  ],
+  "needs_retailor": true,
+  "retailor_instructions": "<see RETAILOR INSTRUCTIONS section below>"
 }
 
 Score band guidance: A = 85+ (strong shortlist), B = 70-84 (likely shortlist), C = 55-69 (borderline), D = 40-54 (rewrite required), F < 40 (do not submit).
 Be specific and tough. Vague feedback is worthless. Quote the CV verbatim where relevant.
+
+RETAILOR INSTRUCTIONS — the most important new field:
+
+The dashboard exposes a "Retailor" button that feeds your retailor_instructions text BACK to the tailor LLM along with the original resume + JD. Write that text as if you were briefing the next tailor pass directly.
+
+Set "needs_retailor": true whenever the CV would meaningfully improve from a re-tailor pass (any C/D/F grade, any B grade with concrete revision priorities, or any A grade where adding 1-2 missing JD keywords would push it higher). Set it to false ONLY when the CV is already an A and there is literally nothing to add.
+
+When needs_retailor is true, "retailor_instructions" must be a self-contained instruction block, written in plain English, that tells the next tailor pass exactly what to change. Do NOT just restate the critique — convert it into actionable edits. Structure it as numbered points:
+
+1. HEADLINE: <if the headline should change, give the new one verbatim; otherwise omit>
+2. PROFILE: <which sentences to rewrite; what JD terms / seniority / domain to surface>
+3. SKILLS: <which categories to reorder; which items to add or move to the front; which rows to drop>
+4. EXPERIENCE BULLETS: <which specific bullets to rewrite, quoting the original, with the JD term or metric to surface; which bullets to drop entirely>
+5. PROJECTS: <which projects to drop/replace; which inventory projects to surface instead>
+6. KEYWORDS TO SURFACE: <a flat list of JD terms the resume must mention naturally (only those the candidate genuinely has from the inventory)>
+7. ANYTHING ELSE: <one-line warnings about ATS hygiene, em-dash slips, generic phrasing>
+
+Keep retailor_instructions <= 1500 characters. If needs_retailor is false, set retailor_instructions to an empty string.
 """
 
 
@@ -267,6 +287,11 @@ def _format_markdown(result: dict[str, Any]) -> str:
     for item in c.get("revision_priorities", []):
         lines.append(f"**{item.get('priority', '?')}. {item.get('issue', '')}**")
         lines.append(f"- {item.get('suggestion', '')}")
+        lines.append("")
+    if c.get("needs_retailor"):
+        lines.append("## Retailor instructions (feed back to tailor LLM)")
+        lines.append("")
+        lines.append(c.get("retailor_instructions", "").strip() or "_(empty)_")
         lines.append("")
     lines.append("---")
     lines.append(f"*Coverage detail — present: {', '.join(cov['present']) or '(none)'}*")

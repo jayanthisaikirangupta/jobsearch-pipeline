@@ -11,9 +11,9 @@ queries:
   - label: ats-engineer
     search_term: "Engineer"
     location: "United Kingdom"
-    sources: [greenhouse, lever]
+    sources: [greenhouse, lever, ashby, workable, smartrecruiters]
 
   - label: ats-ai
     search_term: "AI OR Machine Learning OR LLM"
     location: "United Kingdom"
-    sources: [greenhouse, lever]
+    sources: [greenhouse, lever, ashby, workable, smartrecruiters]

@@ -42,6 +42,13 @@ class Query:
     hours_old: int = 168
     results_wanted: int = 50
     description_format: str = "markdown"
+    # Search radius in miles for JobSpy sources (Indeed/LinkedIn/Glassdoor).
+    # JobSpy's default is 50mi which leaks London results into a Milton Keynes
+    # search. Tightening to 10mi keeps the city-specific net.
+    distance: int = 10
+    # JobSpy is_remote filter. None = no filter (return all), True = only
+    # remote, False = exclude remote. Default None preserves prior behaviour.
+    is_remote: bool | None = None
     # Optional per-source location override. Glassdoor's location-resolver
     # 400s on country-only strings ("United Kingdom"); use a city instead.
     location_overrides: dict[str, str] = field(default_factory=dict)

@@ -19,11 +19,30 @@ def _load_queries(path: str | Path) -> tuple[dict, list[dict]]:
     return cfg.get("defaults", {}), cfg.get("queries", [])
 
 
-def run(config_path: str | Path) -> Path:
+def run(config_path: str | Path, append: bool = False) -> Path:
     settings = get_settings()
     defaults, queries = _load_queries(config_path)
 
     frames: list[pd.DataFrame] = []
+    if append:
+        existing_path = settings.data_dir / "jobs_raw.parquet"
+        if existing_path.exists() and existing_path.stat().st_size > 0:
+            existing_df = pd.read_parquet(existing_path)
+            if not existing_df.empty:
+                # Drop rows from any source we're about to re-fetch, so this
+                # config re-runs cleanly without duplicating older stale rows.
+                sources_this_run = {
+                    s for q in queries for s in q.get("sources", ["indeed"])
+                }
+                if "query_label" in existing_df.columns:
+                    existing_df = existing_df[
+                        ~existing_df["source"].isin(sources_this_run)
+                    ]
+                frames.append(existing_df)
+                console.print(
+                    f"  append: keeping {len(existing_df)} existing rows "
+                    f"(from sources not in this config)"
+                )
     for q in queries:
         sources = q.get("sources", ["indeed"])
         query = Query(
@@ -34,6 +53,8 @@ def run(config_path: str | Path) -> Path:
             hours_old=defaults.get("hours_old", 168),
             results_wanted=defaults.get("results_wanted", 50),
             description_format=defaults.get("description_format", "markdown"),
+            distance=q.get("distance", defaults.get("distance", 10)),
+            is_remote=q.get("is_remote", defaults.get("is_remote", None)),
             location_overrides=q.get("location_overrides", {}) or {},
         )
         for src_key in sources:

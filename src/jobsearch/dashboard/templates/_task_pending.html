@@ -1,12 +1,8 @@
-{# Pending banner. The button's POST returns this fragment with hx-swap=
-   outerHTML (replacing the previous #task-status div), so it slots into
-   place at the top of the page. The banner THEN polls /tasks/{id} every
-   1.5s, but importantly retargets ITSELF — never #queue, never #tracker.
+{# Pending banner. Self-targets and polls /tasks/{id} every 1.5s.
 
-   While running: server returns this same template, banner self-replaces.
-   On done:       server returns _task_done.html (empty banner + OOB swaps
-                  for #queue + #tracker, refreshing both panels in one shot).
-   On error:      server returns _task_error.html (red banner with retry). #}
+   Single-job tasks show "<kind> running for <job_id>…".
+   Bulk tasks show "Bulk <kind>: 3/10 (Acme Co)…" so the user can see
+   progress through the batch. #}
 <div id="task-status"
      class="task-banner"
      hx-get="/tasks/{{ task_id }}"
@@ -14,5 +10,16 @@
      hx-target="this"
      hx-swap="outerHTML">
   <span class="spinner"></span>
-  <strong>{{ kind }}</strong> running for <code>{{ job_id }}</code>… <span class="muted">(30-60s)</span>
+  {% if total %}
+    <strong>{{ kind }}</strong>
+    <span>{{ progress or 0 }} / {{ total }}</span>
+    {% if progress_label %}
+      <span class="muted">({{ progress_label }})</span>
+    {% endif %}
+    {% if error_count %}
+      <span class="muted">· {{ error_count }} failed</span>
+    {% endif %}
+  {% else %}
+    <strong>{{ kind }}</strong> running for <code>{{ job_id }}</code>… <span class="muted">(30-60s)</span>
+  {% endif %}
 </div>

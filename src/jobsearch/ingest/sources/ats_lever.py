@@ -25,6 +25,7 @@ import yaml
 
 from ...config import _PROJECT_ROOT
 from ..base import BaseSource, Query
+from ._ats_common import load_tokens as _shared_load_tokens
 
 
 _API = "https://api.lever.co/v0/postings/{site}"
@@ -33,17 +34,10 @@ _TOKENS_PATH = _PROJECT_ROOT / "config" / "sponsor_tokens.yaml"
 
 
 def _load_sites() -> list[str]:
-    if not _TOKENS_PATH.exists():
-        return []
-    cfg = yaml.safe_load(_TOKENS_PATH.read_text(encoding="utf-8")) or {}
-    raw = cfg.get("lever") or []
-    seen, out = set(), []
-    for s in raw:
-        s = str(s).strip().lower()
-        if s and s not in seen:
-            seen.add(s)
-            out.append(s)
-    return out
+    # Delegates to the shared loader so both the curated AND the
+    # auto-discovered token files feed this source. Lever sites are
+    # always lower-case.
+    return [s.lower() for s in _shared_load_tokens("lever")]
 
 
 def _row_id(site: str, internal_id: str | None,
@@ -91,7 +85,9 @@ def _matches_location(loc: str, target: str) -> bool:
                     if len(w) > 2 and w.lower() not in {"united", "kingdom", "uk", "gb"}}
     if not target_words:
         return target_lower in loc_lower
-    return any(w in loc_lower for w in target_words)
+    # Multi-word cities (Milton Keynes, Hemel Hempstead) need ALL tokens to
+    # match, otherwise "Milton Park, London" leaks into a Milton Keynes search.
+    return all(w in loc_lower for w in target_words)
 
 
 def _amount(salary: dict | None, key: str) -> int | float:
@@ -139,6 +135,14 @@ class Source(BaseSource):
                         continue
 
                     salary = p.get("salaryRange") or {}
+                    # Lever's createdAt is a Unix epoch in MILLISECONDS.
+                    # str() of that is unparseable by pandas/dateutil, so
+                    # convert to ISO-8601 here.
+                    created = p.get("createdAt")
+                    if isinstance(created, (int, float)) and created > 0:
+                        posted_at = pd.Timestamp(int(created), unit="ms", tz="UTC").isoformat()
+                    else:
+                        posted_at = ""
                     records.append({
                         "id": _row_id(site, p.get("id"), title, site),
                         "title": title,
@@ -146,7 +150,7 @@ class Source(BaseSource):
                         "location": location,
                         "description": description,
                         "url": str(p.get("hostedUrl") or ""),
-                        "posted_at": str(p.get("createdAt") or ""),
+                        "posted_at": posted_at,
                         "min_amount": _amount(salary, "min"),
                         "max_amount": _amount(salary, "max"),
                         "currency": str(salary.get("currency") or "") or pd.NA,

@@ -78,8 +78,11 @@ def fetch_via_jobspy(site: str, query: Query) -> pd.DataFrame:
         hours_old=query.hours_old,
         results_wanted=query.results_wanted,
         description_format=query.description_format,
+        distance=query.distance,
         verbose=0,
     )
+    if query.is_remote is not None:
+        kwargs["is_remote"] = query.is_remote
     if settings.jobspy_proxy:
         kwargs["proxies"] = [settings.jobspy_proxy]
 

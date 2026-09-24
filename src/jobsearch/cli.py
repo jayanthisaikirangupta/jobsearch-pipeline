@@ -34,11 +34,35 @@ def ingest() -> None:
     """Scrape configured boards."""
 
 
+# ----- outreach --------------------------------------------------------------
+@cli.group()
+def outreach() -> None:
+    """Direct-outreach packs (LinkedIn notes + emails) for target jobs."""
+
+
+@outreach.command("run")
+@click.option("--job-id", default=None, help="Generate for one specific job id.")
+@click.option("--top", type=int, default=5, show_default=True,
+              help="Without --job-id: generate for the top-N A/B jobs not yet applied.")
+def outreach_run(job_id: str | None, top: int) -> None:
+    from .outreach import generator
+    if job_id:
+        out = generator.generate_for_job(job_id)
+        console.print(f"[green]Wrote {out}[/]")
+    else:
+        outs = generator.generate_top(top)
+        console.print(f"[green]Wrote {len(outs)} outreach packs -> output/outreach/[/]")
+
+
 @ingest.command("run")
 @click.option("--config", "config_path", default="config/queries.yaml", show_default=True)
-def ingest_run(config_path: str) -> None:
+@click.option("--append", is_flag=True,
+              help="Merge with the existing jobs_raw.parquet instead of "
+                   "overwriting it. Rows from sources in this config are "
+                   "refreshed; rows from other sources are preserved.")
+def ingest_run(config_path: str, append: bool) -> None:
     from .ingest import runner
-    runner.run(config_path)
+    runner.run(config_path, append=append)
 
 
 # ----- filter ----------------------------------------------------------------

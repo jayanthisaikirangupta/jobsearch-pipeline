@@ -12,18 +12,31 @@ from . import claude_tailor, picker, writer
 
 console = Console()
 
+# Statuses that mean "I'm done with this row" — skipped from tailoring
+# unless force=True. Mirrors review_runner._DONE_STATUSES so the dashboard's
+# Skip button (which writes status=withdrawn) actually short-circuits both
+# tailor and review.
+_DONE_STATUSES = frozenset({"withdrawn", "expired", "rejected", "applied",
+                            "interview", "offer"})
+
 
 def _safe_filename(s: str, fallback: str = "co") -> str:
     safe = "".join(c if c.isalnum() else "_" for c in (s or fallback))[:40]
     return safe or fallback
 
 
-def tailor_one(row: "pd.Series", *, force: bool = False) -> Path | None:
+def tailor_one(row: "pd.Series", *, force: bool = False,
+               extra_context: str = "") -> Path | None:
     """Tailor a single scored-parquet row. Returns the .docx path or None
     on skip/failure. Used by both the slice-driver run() loop and the
     dashboard's per-row Tailor button.
 
-    force=True bypasses the skip_existing check (re-tailor over the top).
+    force=True bypasses both the skip_existing check (re-tailor over the
+    top) and the done-status guard (re-tailor a withdrawn/applied/etc row).
+
+    extra_context (optional): free-text guidance appended to the tailor
+    prompt's inventory section. Used by /retailor to feed reviewer-produced
+    revision instructions back into the next tailor pass.
     """
     settings = get_settings()
     profile = get_profile()
@@ -31,10 +44,18 @@ def tailor_one(row: "pd.Series", *, force: bool = False) -> Path | None:
 
     if not force:
         existing = tracker_get(job_id)
-        if existing and existing.get("status") == "tailored":
-            rp = Path(existing.get("resume_path") or "")
-            if rp.exists() and rp.stat().st_size > 0:
-                return rp  # idempotent skip
+        if existing:
+            status = (existing.get("status") or "").lower()
+            if status in _DONE_STATUSES:
+                console.print(
+                    f"  [dim]skip[/] {row.get('company')} "
+                    f"(status={status}; pass force=True to re-tailor)"
+                )
+                return None
+            if status == "tailored":
+                rp = Path(existing.get("resume_path") or "")
+                if rp.exists() and rp.stat().st_size > 0:
+                    return rp  # idempotent skip
 
     variant = picker.pick(str(row.get("title", "")), str(row.get("description", "")))
     if variant is None:
@@ -45,6 +66,7 @@ def tailor_one(row: "pd.Series", *, force: bool = False) -> Path | None:
         job_title=str(row.get("title", "")),
         company=str(row.get("company", "")),
         jd=str(row.get("description", "")),
+        extra_context=extra_context,
     )
 
     safe_company = _safe_filename(str(row.get("company", "co")))
@@ -66,7 +88,8 @@ def tailor_one(row: "pd.Series", *, force: bool = False) -> Path | None:
     return out_path
 
 
-def run_for_id(job_id: str, *, force: bool = False) -> Path | None:
+def run_for_id(job_id: str, *, force: bool = False,
+               extra_context: str = "") -> Path | None:
     """Tailor a single job by id. Used by the dashboard's per-row button."""
     settings = get_settings()
     src = settings.data_dir / "jobs_scored.parquet"
@@ -76,7 +99,7 @@ def run_for_id(job_id: str, *, force: bool = False) -> Path | None:
     match = df[df["id"] == job_id]
     if match.empty:
         raise KeyError(f"job_id {job_id} not in jobs_scored.parquet")
-    return tailor_one(match.iloc[0], force=force)
+    return tailor_one(match.iloc[0], force=force, extra_context=extra_context)
 
 
 def run(top_n: int = 10, offset: int = 0, skip_existing: bool = True) -> list[Path]:

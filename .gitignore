@@ -41,3 +41,12 @@ Thumbs.db
 # .claude/ holds session state, agents, skills. CLAUDE.md is local notes.
 .claude/
 CLAUDE.md
+
+config/ca-bundle.pem
+
+# --- Scratch / one-off scraping output ------------------------------------
+_ico_*.html
+ico_*.html
+_unknown
+sponsors_*.csv
+config/sponsor_tokens.discovered.yaml

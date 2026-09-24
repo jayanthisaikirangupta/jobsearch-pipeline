@@ -33,7 +33,6 @@ SOC_TITLE_HINTS: dict[int, list[str]] = {
     2133: ["data engineer", "data architect", "solutions architect", "systems designer", "platform engineer"],
     2134: ["software engineer", "software developer", "backend", "full stack", "ai engineer", "ml engineer", "genai", "llm engineer"],
     2139: ["devops", "site reliability", "sre", "platform", "cloud engineer"],
-    2433: ["data scientist", "applied scientist", "research scientist", "statistician"],
 }
 
 GRADE_BANDS = [(85, "A"), (70, "B"), (55, "C"), (40, "D")]
@@ -116,7 +115,33 @@ def _score_soc(title: str, target_socs: list[int]) -> int:
     return 4
 
 
-def _score_skills(description: str, must: list[str], nice: list[str]) -> int:
+# Lane detection: which of Sai's two role families does this title belong
+# to? Lane "ai" = applied GenAI/LLM engineering; lane "software" =
+# Java/Python full-stack SWE. Checked in order — "AI Engineer" hits the
+# ai lane before the generic "engineer" hits software.
+_LANE_TITLE_HINTS: list[tuple[str, list[str]]] = [
+    ("ai", ["ai engineer", "genai", "generative ai", "llm", "agentic",
+            "ai developer", "applied ai", "prompt engineer"]),
+    ("software", ["software engineer", "software developer", "backend",
+                  "back end", "full stack", "full-stack", "fullstack",
+                  "java", "python developer", "python engineer", "frontend",
+                  "front end", "react", "angular", "web developer",
+                  "application developer", "platform engineer",
+                  "cloud engineer", "devops", "site reliability",
+                  "data engineer"]),
+]
+
+
+def _detect_lane(title: str) -> str | None:
+    t = (title or "").lower()
+    for lane, hints in _LANE_TITLE_HINTS:
+        if any(h in t for h in hints):
+            return lane
+    return None
+
+
+def _score_skills(description: str, must: list[str], nice: list[str],
+                  title: str = "", lanes: dict[str, list[str]] | None = None) -> int:
     """Score 0-20 based on JD's overlap with confirmed must/nice skills.
 
     Rebalanced 2026: count distinct must-have hits and reward the absolute
@@ -127,6 +152,14 @@ def _score_skills(description: str, must: list[str], nice: list[str]) -> int:
     text = (description or "").lower()
     if not text:
         return 0
+    # Lane-aware matching: when per-lane lists are configured and the title
+    # maps to a lane, count must-hits against THAT lane only. A LangChain-
+    # heavy JD no longer gets full skill marks as a "Java role" and vice
+    # versa. Titles outside both lanes fall back to the union list.
+    if lanes:
+        lane = _detect_lane(title)
+        if lane and lanes.get(lane):
+            must = lanes[lane]
     # Use sub-string match for multi-word skills like "spring boot", "ci/cd"
     must_hits = sum(1 for k in must if k.lower() in text)
     nice_hits = sum(1 for k in nice if k.lower() in text)
@@ -138,10 +171,19 @@ def _score_skills(description: str, must: list[str], nice: list[str]) -> int:
 
 # Tier signal keywords. Order matters: more specific patterns first.
 _TIER_PATTERNS: list[tuple[int, list[str]]] = [
+    # Out-of-lane role families: interview loops Sai would fail today
+    # (stats/modelling, research ML, pure architecture). Hard drop — these
+    # should never reach the Action Queue regardless of keyword overlap.
+    (-20, ["data scientist", "research scientist", "applied scientist",
+           "machine learning engineer", " ml engineer", "nlp engineer",
+           "research engineer", "statistician", "solutions architect",
+           "enterprise architect", "data architect"]),
     (-15, ["intern", "internship", "graduate", "junior", "entry level",
            "entry-level", "trainee", "apprentice"]),
     (-10, ["principal", "staff engineer", "staff software", "staff data",
-           "staff machine", "staff ai", "head of", "director", "vp",
+           "staff machine", "staff ai", "staff cloud", "staff platform",
+           "staff frontend", "staff backend", "staff site", "head of",
+           "director", "vp",
            "engineering manager", "vice president"]),
     # 'Lead' is borderline — sometimes means tech lead (5+ yrs), sometimes
     # senior IC contributor. Small penalty.
@@ -214,20 +256,48 @@ def _score_sponsor(score: float | int | None) -> int:
     return 0
 
 
+# Data Engineer sub-filter: DE titles are fine when the JD is really a
+# software role that touches data (Java/Python/Kafka/APIs), and a fail
+# when it's a warehouse/platform role (Spark internals, Airflow, dbt,
+# dimensional modelling) whose interview loop Sai would not pass today.
+_DE_PLATFORM_STACK = ("airflow", "dbt", "databricks", "snowflake", "spark",
+                      "redshift", "bigquery", "data warehouse", "dimensional model",
+                      "data vault", "dagster", "fivetran")
+_DE_CORE_STACK = ("java", "python", "kafka", "mongodb", "postgres", "api",
+                  "microservice", "spring", "rest")
+
+
+def _de_platform_penalty(title: str, description: str) -> int:
+    """-15 when a Data Engineer JD leads with the platform stack rather
+    than the software stack. 0 otherwise (including for non-DE titles)."""
+    if "data engineer" not in (title or "").lower():
+        return 0
+    text = (description or "").lower()
+    platform_hits = sum(1 for k in _DE_PLATFORM_STACK if k in text)
+    core_hits = sum(1 for k in _DE_CORE_STACK if k in text)
+    if platform_hits >= 2 and platform_hits > core_hits:
+        return -15
+    return 0
+
+
 def score_row(row, profile) -> dict:
     """Score a single row (Mapping-like with .get) and return the column
     additions. Used by both the batch scorer below and the single-URL
     driver in pipeline/single_url.py — keep them sharing one impl."""
     annual = _annual_gbp(row.get("min_amount"), row.get("max_amount"), row.get("interval"))
+    title = row.get("title", "")
+    description = row.get("description", "")
+    tier = _score_tier(title) + _de_platform_penalty(title, description)
     bd = ScoreBreakdown(
         salary=_score_salary(annual, profile.salary_floor_gbp, profile.salary_target_gbp),
-        soc_eligibility=_score_soc(row.get("title", ""), profile.target_socs),
+        soc_eligibility=_score_soc(title, profile.target_socs),
         skills_overlap=_score_skills(
-            row.get("description", ""), profile.skills_must_have, profile.skills_nice_to_have
+            description, profile.skills_must_have, profile.skills_nice_to_have,
+            title=title, lanes=profile.skills_lanes,
         ),
         location=_score_location(row.get("location", ""), profile.target_locations),
         sponsor_signal=_score_sponsor(row.get("sponsor_score")),
-        tier_match=_score_tier(row.get("title", "")),
+        tier_match=tier,
     )
     return {
         "score_total": bd.total,

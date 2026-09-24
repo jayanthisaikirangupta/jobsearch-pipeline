@@ -70,6 +70,19 @@ def filter_jobs() -> Path:
             )
 
     jobs = jobs.assign(**pd.DataFrame(matches))
+
+    # Council rows bypass the private-sector sponsor register — councils are
+    # public bodies with their own Skilled Worker arrangements (rare for tech,
+    # but they exist), and their names won't fuzzy-match private-sector
+    # sponsor names anyway. Let them through so the user can see them scored
+    # and decide per row.
+    if "source" in jobs.columns:
+        council_mask = jobs["source"] == "councils"
+        jobs.loc[council_mask, "sponsor_match"] = jobs.loc[
+            council_mask, "company"
+        ].fillna("")
+        jobs.loc[council_mask, "sponsor_score"] = 100
+
     filtered = jobs[jobs["sponsor_match"].notna()].copy()
 
     out = settings.data_dir / "jobs_filtered.parquet"

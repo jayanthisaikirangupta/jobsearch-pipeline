@@ -3,9 +3,47 @@
     No rows in the queue. Run <code>tailor run</code> to populate, or change filters.
   </div>
 {% else %}
+<div class="bulk-bar">
+  <label class="bulk-check">
+    <input type="checkbox" id="bulk-select-all"
+           onclick="document.querySelectorAll('input.bulk-row').forEach(c => c.checked = this.checked); updateBulkCount();" />
+    <span>Select all</span>
+  </label>
+  <span class="bulk-count muted" id="bulk-count">0 selected</span>
+  <span class="bulk-actions">
+    <button type="button" class="icon-btn icon-btn-primary"
+            onclick="submitBulk('/bulk/tailor')">✂ Tailor selected</button>
+    <button type="button" class="icon-btn icon-btn-primary"
+            onclick="submitBulk('/bulk/review')">✓ Review selected</button>
+    <button type="button" class="icon-btn"
+            onclick="submitBulk('/bulk/skip')">⊘ Skip selected</button>
+  </span>
+</div>
+<script>
+  // Bulk actions: collect ticked checkboxes into a comma-joined string and
+  // post via HTMX so the existing #task-status / OOB swap plumbing works.
+  function updateBulkCount() {
+    var n = document.querySelectorAll('input.bulk-row:checked').length;
+    var el = document.getElementById('bulk-count');
+    if (el) el.textContent = n + ' selected';
+  }
+  function submitBulk(url) {
+    var ids = Array.from(document.querySelectorAll('input.bulk-row:checked'))
+                   .map(function (c) { return c.value; });
+    if (!ids.length) { alert('No rows selected.'); return; }
+    var verb = url.split('/').pop();
+    if (verb === 'skip' && !confirm('Skip ' + ids.length + ' job(s)?')) return;
+    htmx.ajax('POST', url, {
+      target: '#task-status',
+      swap: 'outerHTML',
+      values: { job_ids: ids.join(',') },
+    });
+  }
+</script>
 <table>
   <thead>
     <tr>
+      <th style="width: 28px;"></th>
       <th>Rank</th>
       <th>Grade</th>
       <th>Score</th>
@@ -19,6 +57,10 @@
   <tbody>
   {% for r in rows %}
     <tr id="queue-row-{{ r.job_id }}">
+      <td>
+        <input type="checkbox" class="bulk-row" value="{{ r.job_id }}"
+               onclick="updateBulkCount()" />
+      </td>
       <td class="muted">#{{ loop.index }}</td>
       <td><span class="grade-{{ r.grade or 'F' }}">{{ r.grade or '-' }}</span></td>
       <td class="score">{{ r.score_total }}</td>
@@ -94,6 +136,18 @@
                     hx-post="/review/{{ r.job_id }}"
                     hx-target="#task-status"
                     hx-swap="outerHTML">✓ Review</button>
+          {% endif %}
+
+          {# Retailor: only when reviewer left actionable instructions on
+             file. Tooltip shows the instructions so user can see what
+             the LLM is about to act on. #}
+          {% if r.needs_retailor %}
+            <button class="icon-btn icon-btn-primary"
+                    title="{{ r.retailor_instructions }}"
+                    hx-post="/retailor/{{ r.job_id }}"
+                    hx-target="#task-status"
+                    hx-swap="outerHTML"
+                    hx-confirm="Re-tailor this resume using the reviewer's stored instructions? The existing .docx will be overwritten.">🔄 Retailor</button>
           {% endif %}
 
           {% set status_key = r.tracker_status or '' %}
